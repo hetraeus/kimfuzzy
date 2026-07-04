@@ -1,0 +1,47 @@
+package com.example.launcher
+
+import android.content.Context
+import android.graphics.Color
+import android.util.TypedValue
+
+object ThemeUtils {
+    fun applyTheme(context: Context) {
+        val theme = Prefs.getTheme()
+        val themeId = when (theme) {
+            "light" -> R.style.Theme_Launcher_Light
+            "dark" -> R.style.Theme_Launcher_Dark
+            "oled" -> R.style.Theme_Launcher_OLED
+            "sepia" -> R.style.Theme_Launcher_Sepia
+            else -> R.style.Theme_Launcher_Light
+        }
+        context.setTheme(themeId)
+    }
+
+    fun getBackgroundColor(context: Context): Int {
+        return when (Prefs.getTheme()) {
+            "light" -> Color.parseColor("#FAFAFA")
+            "dark" -> Color.parseColor("#121212")
+            "oled" -> Color.BLACK
+            "sepia" -> Color.parseColor("#F4ECD8")
+            else -> Color.parseColor("#FAFAFA")
+        }
+    }
+
+    fun getTextColor(context: Context): Int {
+        return when (Prefs.getTheme()) {
+            "light" -> Color.parseColor("#212121")
+            "dark", "oled" -> Color.parseColor("#EEEEEE")
+            "sepia" -> Color.parseColor("#5B4636")
+            else -> Color.parseColor("#212121")
+        }
+    }
+
+    fun getSecondaryTextColor(context: Context): Int {
+        return when (Prefs.getTheme()) {
+            "light" -> Color.parseColor("#757575")
+            "dark", "oled" -> Color.parseColor("#BDBDBD")
+            "sepia" -> Color.parseColor("#8D7B68")
+            else -> Color.parseColor("#757575")
+        }
+    }
+}

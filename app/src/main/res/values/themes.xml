@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Launcher" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <style name="Theme.Launcher.Light" parent="Theme.Launcher">
+        <item name="android:windowBackground">@color/light_bg</item>
+        <item name="android:textColorPrimary">@color/light_text</item>
+        <item name="android:textColorSecondary">@color/light_text_secondary</item>
+        <item name="colorPrimary">@color/accent_default</item>
+        <item name="colorPrimaryVariant">@color/accent_default</item>
+    </style>
+
+    <style name="Theme.Launcher.Dark" parent="Theme.Launcher">
+        <item name="android:windowBackground">@color/dark_bg</item>
+        <item name="android:textColorPrimary">@color/dark_text</item>
+        <item name="android:textColorSecondary">@color/dark_text_secondary</item>
+        <item name="colorPrimary">@color/accent_default</item>
+        <item name="colorPrimaryVariant">@color/accent_default</item>
+    </style>
+
+    <style name="Theme.Launcher.OLED" parent="Theme.Launcher">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:textColorPrimary">@color/dark_text</item>
+        <item name="android:textColorSecondary">@color/dark_text_secondary</item>
+        <item name="colorPrimary">@color/accent_default</item>
+        <item name="colorPrimaryVariant">@color/accent_default</item>
+    </style>
+
+    <style name="Theme.Launcher.Sepia" parent="Theme.Launcher">
+        <item name="android:windowBackground">@color/sepia_bg</item>
+        <item name="android:textColorPrimary">@color/sepia_text</item>
+        <item name="android:textColorSecondary">@color/sepia_text_secondary</item>
+        <item name="colorPrimary">@color/sepia_text</item>
+        <item name="colorPrimaryVariant">@color/sepia_text</item>
+    </style>
+</resources>
