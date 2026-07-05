@@ -2,6 +2,8 @@ package com.example.launcher
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.widget.ImageView
@@ -21,27 +23,29 @@ object IconSize {
         imageView.layoutParams.width = size
         imageView.layoutParams.height = size
 
+        // Always start clean — kill any recycled background or clip
+        imageView.background = null
+        imageView.clipToOutline = false
+
         if (iconPack.isNotBlank() && icon != null && fromPack) {
-            // Icon-pack icon: draw as-is, NEVER tint.
-            // Monochrome vectors are black; on dark themes they need a subtle
-            // background or they become invisible.
             imageView.setImageDrawable(icon)
-            imageView.colorFilter = null
             imageView.scaleType = ImageView.ScaleType.FIT_CENTER
 
             val theme = Prefs.getTheme()
             if (theme == "dark" || theme == "oled") {
-                val bg = GradientDrawable()
-                bg.shape = GradientDrawable.OVAL
-                bg.setColor(Color.parseColor("#22FFFFFF"))
-                imageView.background = bg
-                imageView.clipToOutline = true
+                // Invert black monochrome icons to white so they remain visible
+                val matrix = ColorMatrix(floatArrayOf(
+                    -1f, 0f, 0f, 0f, 255f,
+                    0f, -1f, 0f, 0f, 255f,
+                    0f, 0f, -1f, 0f, 255f,
+                    0f, 0f, 0f,  1f,  0f
+                ))
+                imageView.colorFilter = ColorMatrixColorFilter(matrix)
             } else {
-                imageView.background = null
-                imageView.clipToOutline = false
+                imageView.colorFilter = null
             }
         } else {
-            // Default / system icon: keep original colors
+            // Default / system icons: keep original colors, no filter
             imageView.colorFilter = null
             imageView.setImageDrawable(icon)
             when (sizeTheme) {
@@ -55,8 +59,6 @@ object IconSize {
                     imageView.scaleType = ImageView.ScaleType.CENTER_CROP
                 }
                 else -> {
-                    imageView.background = null
-                    imageView.clipToOutline = false
                     imageView.scaleType = ImageView.ScaleType.FIT_CENTER
                 }
             }
