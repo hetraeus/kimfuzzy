@@ -311,7 +311,13 @@ class MainActivity : AppCompatActivity() {
                 val resolve = resolveMap[app.packageName]
                 val defaultIcon = resolve?.loadIcon(packageManager)
                 val icon = if (iconPackPkg.isNotBlank()) {
-                    IconPack.loadIcon(ctx, iconPackPkg, app.packageName) ?: defaultIcon
+                    IconPack.loadIcon(
+                        ctx,
+                        iconPackPkg,
+                        app.packageName,
+                        app.activityName,
+                        app.label
+                    ) ?: defaultIcon
                 } else {
                     defaultIcon
                 }
@@ -541,12 +547,6 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("Cancel", null)
             .show()
-    }
-
-    private fun isDefaultLauncher(): Boolean {
-        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-        val info = packageManager.resolveActivity(intent, 0)
-        return info?.activityInfo?.packageName == packageName
     }
 
     private fun promptSetDefaultLauncher() {
