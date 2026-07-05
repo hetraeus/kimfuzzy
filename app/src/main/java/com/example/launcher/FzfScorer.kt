@@ -6,11 +6,26 @@ object FzfScorer {
         val q = query.lowercase().trim()
         val t = text.lowercase()
 
+        // If query contains spaces, treat as multi-word: score each word and sum
+        if (q.contains(' ')) {
+            val words = q.split(' ')
+            var totalScore = 0
+            for (word in words) {
+                if (word.isBlank()) continue
+                totalScore += scoreSingle(word, t)
+            }
+            return totalScore
+        }
+
+        return scoreSingle(q, t)
+    }
+
+    private fun scoreSingle(query: String, text: String): Int {
         var bestScore = 0
 
         // Try matching from each occurrence of the first query char
-        for (start in t.indices) {
-            if (t[start] != q.getOrNull(0)) continue
+        for (start in text.indices) {
+            if (text[start] != query.getOrNull(0)) continue
 
             var score = 0
             var qIdx = 0
@@ -18,8 +33,8 @@ object FzfScorer {
             var consecutive = 0
             var firstMatchPos = -1
 
-            for (i in start..<t.length) {
-                if (qIdx < q.length && t[i] == q[qIdx]) {
+            for (i in start..<text.length) {
+                if (qIdx < query.length && text[i] == query[qIdx]) {
                     score += 10
 
                     if (lastMatch != -1 && i == lastMatch + 1) {
@@ -30,7 +45,7 @@ object FzfScorer {
                     }
 
                     val isWordBoundary = i == 0 || 
-                        t[i - 1] == ' ' || t[i - 1] == '-' || t[i - 1] == '_' || t[i - 1] == '/' || t[i - 1] == '\t'
+                        text[i - 1] == ' ' || text[i - 1] == '-' || text[i - 1] == '_' || text[i - 1] == '/' || text[i - 1] == '\t'
 
                     if (qIdx == 0) {
                         // First char of query: huge bonus for word boundary
@@ -59,7 +74,7 @@ object FzfScorer {
                 score -= firstMatchPos
             }
 
-            if (qIdx >= q.length && score > bestScore) {
+            if (qIdx >= query.length && score > bestScore) {
                 bestScore = score
             }
         }
