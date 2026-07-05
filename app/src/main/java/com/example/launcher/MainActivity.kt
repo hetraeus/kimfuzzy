@@ -310,18 +310,18 @@ class MainActivity : AppCompatActivity() {
             val appsWithIcons = appsNoIcons.map { app ->
                 val resolve = resolveMap[app.packageName]
                 val defaultIcon = resolve?.loadIcon(packageManager)
-                val icon = if (iconPackPkg.isNotBlank()) {
+                val (icon, fromPack) = if (iconPackPkg.isNotBlank()) {
                     IconPack.loadIcon(
                         ctx,
                         iconPackPkg,
                         app.packageName,
                         app.activityName,
-                        app.label
-                    ) ?: defaultIcon
+                        defaultIcon
+                    )
                 } else {
-                    defaultIcon
+                    defaultIcon to false
                 }
-                app.copy(icon = icon)
+                app.copy(icon = icon, iconFromPack = fromPack)
             }
 
             allApps = appsWithIcons
@@ -358,8 +358,16 @@ class MainActivity : AppCompatActivity() {
         val bookmarked = Prefs.getBookmarks()
         val bookmarks = allApps
             .filter { it.packageName in bookmarked }
+            .sortedBy { bookmarked.indexOf(it.packageName) }
             .take(calculateSpanCount() * 2)
-        bookmarkAdapter.submitList(bookmarks)
+
+        val spanCount = calculateSpanCount()
+        val maxSlots = spanCount * 2
+        val reversed = bookmarks.reversed()
+        val padding = (maxSlots - reversed.size).coerceAtLeast(0)
+        val padded = List(padding) { null } + reversed
+
+        bookmarkAdapter.submitList(padded)
     }
 
     private fun filterApps(query: String) {
@@ -540,8 +548,13 @@ class MainActivity : AppCompatActivity() {
             .setSingleChoiceItems(labels, currentIndex) { dialog, which ->
                 val selected = packs[which].first
                 if (selected != current) {
+                    IconPack.clearCache()
                     Prefs.setIconPack(selected)
                     loadApps()
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        val count = IconPack.getAppFilterSize()
+                        Toast.makeText(this, "Icon pack: $count mappings loaded", Toast.LENGTH_SHORT).show()
+                    }, 1500)
                 }
                 dialog.dismiss()
             }

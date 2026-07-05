@@ -31,19 +31,28 @@ object Prefs {
     fun setAppPrefix(packageName: String, prefix: String) =
         prefs.edit().putString("prefix_$packageName", prefix).apply()
 
-    fun getBookmarks(): Set<String> = prefs.getStringSet("bookmarks", emptySet()) ?: emptySet()
+    fun getBookmarks(): List<String> {
+        val str = prefs.getString("bookmarks_ordered", "") ?: ""
+        return if (str.isEmpty()) emptyList() else str.split(",").filter { it.isNotEmpty() }
+    }
 
     fun isBookmarked(packageName: String): Boolean = packageName in getBookmarks()
 
     fun addBookmark(packageName: String) {
-        val set = getBookmarks().toMutableSet()
-        set.add(packageName)
-        prefs.edit().putStringSet("bookmarks", set).apply()
+        val list = getBookmarks().toMutableList()
+        if (!list.contains(packageName)) {
+            list.add(packageName)
+            saveBookmarks(list)
+        }
     }
 
     fun removeBookmark(packageName: String) {
-        val set = getBookmarks().toMutableSet()
-        set.remove(packageName)
-        prefs.edit().putStringSet("bookmarks", set).apply()
+        val list = getBookmarks().toMutableList()
+        list.remove(packageName)
+        saveBookmarks(list)
+    }
+
+    private fun saveBookmarks(list: List<String>) {
+        prefs.edit().putString("bookmarks_ordered", list.joinToString(",")).apply()
     }
 }

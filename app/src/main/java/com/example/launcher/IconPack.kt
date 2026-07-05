@@ -2,15 +2,25 @@ package com.example.launcher
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
+import android.util.Log
 import android.util.Xml
 import org.xmlpull.v1.XmlPullParser
 import java.io.IOException
 
 object IconPack {
+    private const val TAG = "IconPack"
     private var appFilterMap: Map<String, String>? = null
     private var cachedPack: String = ""
+    private val iconCache = mutableMapOf<String, Drawable?>()
+
+    fun clearCache() {
+        iconCache.clear()
+        appFilterMap = null
+        cachedPack = ""
+    }
+
+    fun getAppFilterSize(): Int = appFilterMap?.size ?: 0
 
     fun discover(context: Context): List<Pair<String, String>> {
         val pm = context.packageManager
@@ -47,20 +57,28 @@ object IconPack {
         iconPackPackage: String,
         targetPackage: String,
         targetActivity: String?,
-        appLabel: String?
-    ): Drawable? {
-        if (iconPackPackage.isBlank()) return null
+        defaultIcon: Drawable?
+    ): Pair<Drawable?, Boolean> {
+        if (iconPackPackage.isBlank()) return defaultIcon to false
+
+        val cacheKey = "$iconPackPackage:$targetPackage/$targetActivity"
+        if (cacheKey in iconCache) {
+            val cached = iconCache[cacheKey]
+            return (cached ?: defaultIcon) to (cached != null)
+        }
 
         if (cachedPack != iconPackPackage || appFilterMap == null) {
             appFilterMap = parseAppFilter(context, iconPackPackage)
             cachedPack = iconPackPackage
+            Log.i(TAG, "Loaded appfilter for $iconPackPackage: ${appFilterMap?.size ?: 0} entries")
         }
 
         val pm = context.packageManager
         val packResources = try {
             pm.getResourcesForApplication(iconPackPackage)
         } catch (e: Exception) {
-            return null
+            iconCache[cacheKey] = null
+            return defaultIcon to false
         }
 
         val filterMap = appFilterMap
@@ -69,71 +87,34 @@ object IconPack {
                 val component = "$targetPackage/$targetActivity"
                 filterMap[component]?.let { name ->
                     val resId = resolveResourceId(packResources, iconPackPackage, name)
-                    if (resId != 0) return packResources.getDrawable(resId, context.theme)
+                    if (resId != 0) {
+                        try {
+                            val drawable = packResources.getDrawable(resId, context.theme)
+                            iconCache[cacheKey] = drawable
+                            return drawable to true
+                        } catch (e: Exception) {
+                            Log.i(TAG, "Failed to load $name for $component")
+                        }
+                    }
                 }
             }
+
             filterMap[targetPackage]?.let { name ->
                 val resId = resolveResourceId(packResources, iconPackPackage, name)
-                if (resId != 0) return packResources.getDrawable(resId, context.theme)
+                if (resId != 0) {
+                    try {
+                        val drawable = packResources.getDrawable(resId, context.theme)
+                        iconCache[cacheKey] = drawable
+                        return drawable to true
+                    } catch (e: Exception) {
+                        Log.i(TAG, "Failed to load $name for $targetPackage")
+                    }
+                }
             }
         }
 
-        val candidates = buildCandidateNames(targetPackage, targetActivity, appLabel)
-
-        for (name in candidates) {
-            val resId = resolveResourceId(packResources, iconPackPackage, name)
-            if (resId != 0) {
-                return packResources.getDrawable(resId, context.theme)
-            }
-        }
-
-        return null
-    }
-
-    private fun buildCandidateNames(pkg: String, activity: String?, label: String?): List<String> {
-        val candidates = mutableListOf<String>()
-        val pkgLower = pkg.lowercase()
-        val lastPart = pkg.substringAfterLast(".").lowercase()
-
-        candidates.add(pkg)
-        candidates.add(pkgLower)
-        candidates.add(pkg.replace(".", "_"))
-        candidates.add(pkg.replace(".", "_").lowercase())
-        candidates.add(pkg.replace(".", ""))
-        candidates.add(pkg.replace(".", "").lowercase())
-        candidates.add(lastPart)
-        candidates.add("ic_" + pkg.replace(".", "_").lowercase())
-
-        if (activity != null) {
-            val actSimple = activity.substringAfterLast(".").lowercase()
-            val actFull = activity.replace(".", "_").lowercase()
-            candidates.add(actSimple)
-            candidates.add(actFull)
-            candidates.add("${lastPart}_$actSimple")
-            candidates.add("${pkg.replace(".", "_").lowercase()}_$actSimple")
-            candidates.add(activity)
-            candidates.add(activity.lowercase())
-        }
-
-        listOf("com_", "org_", "net_", "app_").forEach { prefix ->
-            if (pkgLower.startsWith(prefix)) {
-                val stripped = pkgLower.removePrefix(prefix)
-                candidates.add(stripped)
-                candidates.add(stripped.replace(".", "_"))
-                candidates.add(stripped.substringAfterLast("."))
-            }
-        }
-
-        if (label != null) {
-            val clean = label.lowercase().replace(Regex("[^a-z0-9]"), "_").trim('_')
-            if (clean.isNotBlank()) {
-                candidates.add(clean)
-                candidates.add(clean.removePrefix("the_"))
-                candidates.add("ic_$clean")
-            }
-        }
-
-        return candidates.distinct()
+        iconCache[cacheKey] = null
+        return defaultIcon to false
     }
 
     private fun resolveResourceId(resources: android.content.res.Resources, pkg: String, name: String): Int {
@@ -146,48 +127,93 @@ object IconPack {
 
     private fun parseAppFilter(context: Context, iconPackPackage: String): Map<String, String> {
         val map = mutableMapOf<String, String>()
+        val packageFallback = mutableMapOf<String, String>()
+
         try {
             val packContext = context.createPackageContext(
                 iconPackPackage,
                 Context.CONTEXT_IGNORE_SECURITY
             )
-            val assetManager = packContext.assets
+            val packResources = packContext.resources
 
-            val paths = listOf("appfilter.xml", "xml/appfilter.xml", "res/xml/appfilter.xml")
-            val inputStream = paths.firstNotNullOfOrNull { path ->
+            var found = false
+
+            // 1. Try assets/
+            val assetPaths = listOf(
+                "appfilter.xml",
+                "xml/appfilter.xml",
+                "appmap.xml",
+                "xml/appmap.xml"
+            )
+            for (path in assetPaths) {
                 try {
-                    assetManager.open(path)
-                } catch (e: IOException) {
-                    null
-                }
-            } ?: return map
-
-            inputStream.use { stream ->
-                val parser = Xml.newPullParser()
-                parser.setInput(stream, "UTF-8")
-
-                var eventType = parser.eventType
-                while (eventType != XmlPullParser.END_DOCUMENT) {
-                    if (eventType == XmlPullParser.START_TAG && parser.name == "item") {
-                        val component = parser.getAttributeValue(null, "component")
-                        val drawable = parser.getAttributeValue(null, "drawable")
-                        if (component != null && drawable != null) {
-                            val clean = component
-                                .removePrefix("ComponentInfo{")
-                                .removeSuffix("}")
-                            map[clean] = drawable
-                            val pkgOnly = clean.substringBefore("/")
-                            if (!map.containsKey(pkgOnly)) {
-                                map[pkgOnly] = drawable
-                            }
-                        }
+                    packContext.assets.open(path).use { stream ->
+                        val parser = Xml.newPullParser()
+                        parser.setInput(stream, "UTF-8")
+                        parseAppFilterXml(parser, map, packageFallback)
                     }
-                    eventType = parser.next()
+                    found = true
+                    Log.i(TAG, "Parsed appfilter from assets/$path")
+                    break
+                } catch (e: IOException) {
+                    Log.d(TAG, "Not found in assets: $path")
                 }
             }
+
+            // 2. Try res/xml/ and res/raw/
+            if (!found) {
+                val resConfigs = listOf(
+                    "appfilter" to "xml",
+                    "appmap" to "xml",
+                    "appfilter" to "raw",
+                    "appmap" to "raw"
+                )
+                for ((name, type) in resConfigs) {
+                    val resId = packResources.getIdentifier(name, type, iconPackPackage)
+                    if (resId != 0) {
+                        val parser = packResources.getXml(resId)
+                        parseAppFilterXml(parser, map, packageFallback)
+                        found = true
+                        Log.i(TAG, "Parsed appfilter from res/$type/$name")
+                        break
+                    }
+                }
+            }
+
+            if (!found) {
+                Log.w(TAG, "No appfilter found in $iconPackPackage (tried assets and resources)")
+            }
+
+            Log.i(TAG, "Total parsed: ${map.size} component entries, ${packageFallback.size} package fallbacks")
         } catch (e: Exception) {
-            // Appfilter missing or unreadable
+            Log.e(TAG, "Failed to parse appfilter for $iconPackPackage", e)
         }
-        return map
+        return map + packageFallback
+    }
+
+    private fun parseAppFilterXml(
+        parser: XmlPullParser,
+        map: MutableMap<String, String>,
+        packageFallback: MutableMap<String, String>
+    ) {
+        var eventType = parser.eventType
+        while (eventType != XmlPullParser.END_DOCUMENT) {
+            if (eventType == XmlPullParser.START_TAG && parser.name == "item") {
+                val component = parser.getAttributeValue(null, "component")?.trim()
+                val drawable = parser.getAttributeValue(null, "drawable")?.trim()
+                if (component != null && drawable != null) {
+                    val clean = component
+                        .removePrefix("ComponentInfo{")
+                        .removeSuffix("}")
+                    map[clean] = drawable
+
+                    val pkgOnly = clean.substringBefore("/")
+                    if (!packageFallback.containsKey(pkgOnly)) {
+                        packageFallback[pkgOnly] = drawable
+                    }
+                }
+            }
+            eventType = parser.next()
+        }
     }
 }

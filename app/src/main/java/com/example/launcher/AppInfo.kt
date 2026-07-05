@@ -8,5 +8,6 @@ data class AppInfo(
     val activityName: String,
     val prefix: String,
     val displayName: String,
-    val icon: Drawable?
+    val icon: Drawable?,
+    val iconFromPack: Boolean = false
 )

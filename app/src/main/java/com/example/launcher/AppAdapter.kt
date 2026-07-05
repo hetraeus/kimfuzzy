@@ -27,7 +27,7 @@ class AppAdapter(
         fun bind(app: AppInfo) {
             binding.name.text = app.displayName
             binding.name.setTextColor(ThemeUtils.getTextColor())
-            IconSize.apply(binding.icon, app.icon)
+            IconSize.apply(binding.icon, app.icon, app.iconFromPack)
             binding.root.setOnClickListener { onClick(app) }
             binding.root.setOnLongClickListener {
                 onLongClick(app)
@@ -44,6 +44,7 @@ class AppAdapter(
             old.label == new.label &&
             old.displayName == new.displayName &&
             old.prefix == new.prefix &&
-            old.icon === new.icon
+            old.icon === new.icon &&
+            old.iconFromPack == new.iconFromPack
     }
 }

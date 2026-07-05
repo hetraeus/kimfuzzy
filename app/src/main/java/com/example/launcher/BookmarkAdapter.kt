@@ -1,42 +1,50 @@
 package com.example.launcher
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
-import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.launcher.databinding.ItemBookmarkBinding
 
 class BookmarkAdapter(
     private val onClick: (AppInfo) -> Unit
-) : ListAdapter<AppInfo, BookmarkAdapter.ViewHolder>(DiffCallback()) {
+) : RecyclerView.Adapter<BookmarkAdapter.ViewHolder>() {
+
+    private var items: List<AppInfo?> = emptyList()
+
+    fun submitList(list: List<AppInfo?>) {
+        items = list
+        notifyDataSetChanged()
+    }
+
+    override fun getItemCount() = items.size
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val binding = ItemBookmarkBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        val binding = ItemBookmarkBinding.inflate(
+            LayoutInflater.from(parent.context), parent, false
+        )
         return ViewHolder(binding)
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(getItem(position))
-    }
-
-    inner class ViewHolder(private val binding: ItemBookmarkBinding) :
-        RecyclerView.ViewHolder(binding.root) {
-
-        fun bind(app: AppInfo) {
-            binding.name.text = app.label
-            binding.name.setTextColor(ThemeUtils.getTextColor())
-            IconSize.apply(binding.icon, app.icon)
-            binding.root.setOnClickListener { onClick(app) }
+        val app = items[position]
+        if (app == null) {
+            holder.binding.root.visibility = View.INVISIBLE
+            holder.binding.icon.setImageDrawable(null)
+            holder.binding.icon.colorFilter = null
+            holder.binding.name.text = ""
+            holder.binding.root.setOnClickListener(null)
+            holder.binding.root.isClickable = false
+        } else {
+            holder.binding.root.visibility = View.VISIBLE
+            holder.binding.name.text = app.label
+            holder.binding.name.setTextColor(ThemeUtils.getTextColor())
+            IconSize.apply(holder.binding.icon, app.icon, app.iconFromPack)
+            holder.binding.root.setOnClickListener { onClick(app) }
+            holder.binding.root.isClickable = true
         }
     }
 
-    class DiffCallback : DiffUtil.ItemCallback<AppInfo>() {
-        override fun areItemsTheSame(old: AppInfo, new: AppInfo) =
-            old.packageName == new.packageName
-
-        override fun areContentsTheSame(old: AppInfo, new: AppInfo) =
-            old.label == new.label &&
-            old.icon === new.icon
-    }
+    class ViewHolder(val binding: ItemBookmarkBinding) :
+        RecyclerView.ViewHolder(binding.root)
 }
