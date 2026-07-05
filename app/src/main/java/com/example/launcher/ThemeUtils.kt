@@ -2,7 +2,6 @@ package com.example.launcher
 
 import android.content.Context
 import android.graphics.Color
-import android.util.TypedValue
 
 object ThemeUtils {
     fun applyTheme(context: Context) {
@@ -17,7 +16,7 @@ object ThemeUtils {
         context.setTheme(themeId)
     }
 
-    fun getBackgroundColor(context: Context): Int {
+    fun getBackgroundColor(): Int {
         return when (Prefs.getTheme()) {
             "light" -> Color.parseColor("#FAFAFA")
             "dark" -> Color.parseColor("#121212")
@@ -27,20 +26,20 @@ object ThemeUtils {
         }
     }
 
-    fun getTextColor(context: Context): Int {
+    fun getTextColor(): Int {
         return when (Prefs.getTheme()) {
             "light" -> Color.parseColor("#212121")
             "dark", "oled" -> Color.parseColor("#EEEEEE")
-            "sepia" -> Color.parseColor("#5B4636")
+            "sepia" -> Color.parseColor("#3E2B1F")
             else -> Color.parseColor("#212121")
         }
     }
 
-    fun getSecondaryTextColor(context: Context): Int {
+    fun getSecondaryTextColor(): Int {
         return when (Prefs.getTheme()) {
             "light" -> Color.parseColor("#757575")
             "dark", "oled" -> Color.parseColor("#BDBDBD")
-            "sepia" -> Color.parseColor("#8D7B68")
+            "sepia" -> Color.parseColor("#5B4636")
             else -> Color.parseColor("#757575")
         }
     }

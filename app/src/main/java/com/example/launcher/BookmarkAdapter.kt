@@ -24,8 +24,9 @@ class BookmarkAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(app: AppInfo) {
-            binding.icon.setImageDrawable(app.icon)
             binding.name.text = app.label
+            binding.name.setTextColor(ThemeUtils.getTextColor())
+            IconSize.apply(binding.icon, app.icon)
             binding.root.setOnClickListener { onClick(app) }
         }
     }
@@ -34,6 +35,8 @@ class BookmarkAdapter(
         override fun areItemsTheSame(old: AppInfo, new: AppInfo) =
             old.packageName == new.packageName
 
-        override fun areContentsTheSame(old: AppInfo, new: AppInfo) = old == new
+        override fun areContentsTheSame(old: AppInfo, new: AppInfo) =
+            old.label == new.label &&
+            old.icon === new.icon
     }
 }

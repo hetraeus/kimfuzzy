@@ -35,7 +35,7 @@
         <item name="android:windowBackground">@color/sepia_bg</item>
         <item name="android:textColorPrimary">@color/sepia_text</item>
         <item name="android:textColorSecondary">@color/sepia_text_secondary</item>
-        <item name="colorPrimary">@color/sepia_text</item>
-        <item name="colorPrimaryVariant">@color/sepia_text</item>
+        <item name="colorPrimary">@color/accent_default</item>
+        <item name="colorPrimaryVariant">@color/accent_default</item>
     </style>
 </resources>

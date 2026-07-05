@@ -25,8 +25,9 @@ class AppAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(app: AppInfo) {
-            binding.icon.setImageDrawable(app.icon)
             binding.name.text = app.displayName
+            binding.name.setTextColor(ThemeUtils.getTextColor())
+            IconSize.apply(binding.icon, app.icon)
             binding.root.setOnClickListener { onClick(app) }
             binding.root.setOnLongClickListener {
                 onLongClick(app)
@@ -39,6 +40,10 @@ class AppAdapter(
         override fun areItemsTheSame(old: AppInfo, new: AppInfo) =
             old.packageName == new.packageName
 
-        override fun areContentsTheSame(old: AppInfo, new: AppInfo) = old == new
+        override fun areContentsTheSame(old: AppInfo, new: AppInfo) =
+            old.label == new.label &&
+            old.displayName == new.displayName &&
+            old.prefix == new.prefix &&
+            old.icon === new.icon
     }
 }

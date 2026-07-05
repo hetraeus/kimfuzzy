@@ -17,10 +17,18 @@
         android:gravity="center_vertical">
 
         <TextView
-            android:id="@+id/dateTime"
+            android:id="@+id/timeText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/dateText"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:layout_marginStart="8dp"
             android:textSize="16sp"
             android:textStyle="bold" />
 
@@ -50,7 +58,7 @@
             android:id="@+id/bookmarksGrid"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
+            android:layout_gravity="bottom"
             android:padding="16dp"
             android:clipToPadding="false" />
 
@@ -87,6 +95,8 @@
             android:layout_weight="1"
             android:padding="12dp"
             android:hint="Search apps..."
+            android:gravity="center"
+            android:textAlignment="center"
             android:imeOptions="actionSearch|flagNoExtractUi"
             android:inputType="text"
             android:background="?attr/editTextBackground" />

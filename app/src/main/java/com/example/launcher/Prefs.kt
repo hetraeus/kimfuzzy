@@ -17,6 +17,12 @@ object Prefs {
     fun getAccentColor(): Int = prefs.getInt("accent", Color.parseColor("#FF4081"))
     fun setAccentColor(color: Int) = prefs.edit().putInt("accent", color).apply()
 
+    fun getIconSize(): String = prefs.getString("icon_size", "default") ?: "default"
+    fun setIconSize(size: String) = prefs.edit().putString("icon_size", size).apply()
+
+    fun getIconPack(): String = prefs.getString("icon_pack", "") ?: ""
+    fun setIconPack(pack: String) = prefs.edit().putString("icon_pack", pack).apply()
+
     fun getAppPrefix(packageName: String): String? {
         val p = prefs.getString("prefix_$packageName", null)
         return if (p.isNullOrBlank()) null else p

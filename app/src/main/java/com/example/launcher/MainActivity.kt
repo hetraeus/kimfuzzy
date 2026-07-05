@@ -3,11 +3,14 @@ package com.example.launcher
 import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.AlarmClock
+import android.provider.CalendarContract
 import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
@@ -22,11 +25,11 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.launcher.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -37,7 +40,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var appAdapter: AppAdapter
     private lateinit var bookmarkAdapter: BookmarkAdapter
     private val handler = Handler(Looper.getMainLooper())
-    private val dateFormat = SimpleDateFormat("HH:mm - d MMMM", Locale.getDefault())
+    private val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+    private val dateFormat = SimpleDateFormat("d MMMM", Locale.getDefault())
     private var allApps = listOf<AppInfo>()
     private var isKeyboardVisible = false
 
@@ -57,10 +61,6 @@ class MainActivity : AppCompatActivity() {
         setupKeyboardListener()
         setupSettings()
 
-        if (!isDefaultLauncher()) {
-            promptSetDefaultLauncher()
-        }
-
         loadApps()
     }
 
@@ -71,15 +71,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun applyThemeColors() {
-        val bg = ThemeUtils.getBackgroundColor(this)
-        val text = ThemeUtils.getTextColor(this)
-        val textSecondary = ThemeUtils.getSecondaryTextColor(this)
+        val bg = ThemeUtils.getBackgroundColor()
+        val text = ThemeUtils.getTextColor()
+        val textSecondary = ThemeUtils.getSecondaryTextColor()
         val accent = Prefs.getAccentColor()
 
         binding.root.setBackgroundColor(bg)
         binding.topBar.setBackgroundColor(bg)
 
-        binding.dateTime.setTextColor(text)
+        binding.timeText.setTextColor(text)
+        binding.dateText.setTextColor(text)
         binding.nextAlarm.setTextColor(textSecondary)
         binding.emptyState.setTextColor(textSecondary)
 
@@ -103,17 +104,58 @@ class MainActivity : AppCompatActivity() {
                 handler.postDelayed(this, 60000)
             }
         }, 60000)
+
+        binding.timeText.setOnClickListener {
+            val intent = Intent(AlarmClock.ACTION_SHOW_ALARMS)
+            if (intent.resolveActivity(packageManager) != null) startActivity(intent)
+        }
+
+        binding.dateText.setOnClickListener {
+            openCalendar()
+        }
+
+        binding.nextAlarm.setOnClickListener {
+            val intent = Intent(AlarmClock.ACTION_SHOW_ALARMS)
+            if (intent.resolveActivity(packageManager) != null) startActivity(intent)
+        }
+    }
+
+    private fun openCalendar() {
+        val intent = Intent(Intent.ACTION_INSERT).apply {
+            data = CalendarContract.Events.CONTENT_URI
+        }
+
+        if (intent.resolveActivity(packageManager) != null) {
+            startActivity(intent)
+            return
+        }
+
+        val fallback = Intent(Intent.ACTION_VIEW).apply {
+            data = CalendarContract.CONTENT_URI.buildUpon()
+                .appendPath("time")
+                .appendPath(System.currentTimeMillis().toString())
+                .build()
+        }
+
+        if (fallback.resolveActivity(packageManager) != null) {
+            startActivity(fallback)
+            return
+        }
+
+        Toast.makeText(this, "No calendar app found", Toast.LENGTH_SHORT).show()
     }
 
     private fun updateDateTime() {
-        binding.dateTime.text = dateFormat.format(Date())
+        val now = Date()
+        binding.timeText.text = timeFormat.format(now)
+        binding.dateText.text = dateFormat.format(now)
     }
 
     private fun updateAlarm() {
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val nextAlarm = alarmManager.nextAlarmClock
         binding.nextAlarm.text = if (nextAlarm != null) {
-            val time = DateFormat.getTimeFormat(this).format(Date(nextAlarm.triggerTime))
+            val time = android.text.format.DateFormat.getTimeFormat(this).format(Date(nextAlarm.triggerTime))
             "Alarm: $time"
         } else {
             ""
@@ -140,7 +182,7 @@ class MainActivity : AppCompatActivity() {
             onLongClick = { app -> showAppOptions(app) }
         )
         binding.appList.apply {
-            layoutManager = LinearLayoutManager(this@MainActivity)
+            layoutManager = LinearLayoutManager(this@MainActivity, RecyclerView.VERTICAL, true)
             adapter = appAdapter
         }
     }
@@ -159,6 +201,7 @@ class MainActivity : AppCompatActivity() {
                 val query = s?.toString() ?: ""
                 binding.clearBtn.visibility = if (query.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE
                 filterApps(query)
+                scrollToBottom()
             }
         })
 
@@ -195,6 +238,7 @@ class MainActivity : AppCompatActivity() {
             binding.bookmarksGrid.visibility = android.view.View.GONE
             binding.appList.visibility = android.view.View.VISIBLE
             filterApps(binding.filter.text?.toString() ?: "")
+            scrollToBottom()
         } else {
             binding.bookmarksGrid.visibility = android.view.View.VISIBLE
             binding.appList.visibility = android.view.View.GONE
@@ -211,16 +255,34 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun scrollToBottom() {
+        binding.appList.post {
+            if (appAdapter.itemCount > 0) {
+                binding.appList.scrollToPosition(0)
+            }
+        }
+    }
+
     private fun loadApps() {
         lifecycleScope.launch(Dispatchers.IO) {
             val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
             val resolves = packageManager.queryIntentActivities(intent, 0)
+            val resolveMap = resolves.associateBy { it.activityInfo.packageName }
 
-            val apps = resolves.map { resolve ->
+            // Phase 1: metadata only — labels appear instantly
+            val appsNoIcons = resolves.map { resolve ->
                 val label = resolve.loadLabel(packageManager).toString()
                 val pkg = resolve.activityInfo.packageName
                 val activity = resolve.activityInfo.name
-                val prefix = Prefs.getAppPrefix(pkg) ?: ""
+
+                val appInfo = try {
+                    packageManager.getApplicationInfo(pkg, 0)
+                } catch (e: Exception) { null }
+
+                val autoPrefix = getCategoryPrefix(appInfo)
+                val userPrefix = Prefs.getAppPrefix(pkg)
+                val prefix = if (!userPrefix.isNullOrBlank()) userPrefix else autoPrefix
+
                 val display = if (prefix.isNotEmpty()) "$prefix - $label" else label
 
                 AppInfo(
@@ -229,17 +291,59 @@ class MainActivity : AppCompatActivity() {
                     activityName = activity,
                     prefix = prefix,
                     displayName = display,
-                    icon = resolve.loadIcon(packageManager)
+                    icon = null
                 )
             }.sortedBy { it.displayName.lowercase() }
 
-            allApps = apps
+            allApps = appsNoIcons
 
             withContext(Dispatchers.Main) {
                 loadBookmarks()
                 if (isKeyboardVisible) {
                     filterApps(binding.filter.text?.toString() ?: "")
                 }
+            }
+
+            // Phase 2: load icons in background
+            val iconPackPkg = Prefs.getIconPack()
+            val ctx = applicationContext
+            val appsWithIcons = appsNoIcons.map { app ->
+                val resolve = resolveMap[app.packageName]
+                val defaultIcon = resolve?.loadIcon(packageManager)
+                val icon = if (iconPackPkg.isNotBlank()) {
+                    IconPack.loadIcon(ctx, iconPackPkg, app.packageName) ?: defaultIcon
+                } else {
+                    defaultIcon
+                }
+                app.copy(icon = icon)
+            }
+
+            allApps = appsWithIcons
+
+            withContext(Dispatchers.Main) {
+                loadBookmarks()
+                if (isKeyboardVisible) {
+                    filterApps(binding.filter.text?.toString() ?: "")
+                }
+            }
+        }
+    }
+
+    private fun getCategoryPrefix(appInfo: ApplicationInfo?): String {
+        if (appInfo == null) return ""
+        return when (appInfo.category) {
+            ApplicationInfo.CATEGORY_GAME -> "Game"
+            ApplicationInfo.CATEGORY_AUDIO -> "Audio"
+            ApplicationInfo.CATEGORY_VIDEO -> "Video"
+            ApplicationInfo.CATEGORY_IMAGE -> "Image"
+            ApplicationInfo.CATEGORY_SOCIAL -> "Social"
+            ApplicationInfo.CATEGORY_NEWS -> "News"
+            ApplicationInfo.CATEGORY_MAPS -> "Maps"
+            ApplicationInfo.CATEGORY_PRODUCTIVITY -> "Productivity"
+            ApplicationInfo.CATEGORY_ACCESSIBILITY -> "Accessibility"
+            else -> {
+                val desc = appInfo.loadDescription(packageManager)?.toString()
+                if (!desc.isNullOrBlank()) desc else ""
             }
         }
     }
@@ -341,6 +445,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showSettingsDialog() {
+        val options = arrayOf("Theme", "Accent Color", "Icon Size", "Icon Pack", "Set as Default Launcher")
+
+        AlertDialog.Builder(this)
+            .setTitle("Settings")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> showThemePicker()
+                    1 -> showAccentPicker()
+                    2 -> showIconSizePicker()
+                    3 -> showIconPackPicker()
+                    4 -> promptSetDefaultLauncher()
+                }
+            }
+            .setNegativeButton("Close", null)
+            .show()
+    }
+
+    private fun showThemePicker() {
         val themes = arrayOf("Light", "Dark", "OLED", "Sepia")
         val current = Prefs.getTheme()
         val currentIndex = themes.indexOfFirst { it.lowercase() == current }
@@ -355,10 +477,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 dialog.dismiss()
             }
-            .setPositiveButton("Accent Color") { _, _ ->
-                showAccentPicker()
-            }
-            .setNegativeButton("Close", null)
+            .setNegativeButton("Cancel", null)
             .show()
     }
 
@@ -381,6 +500,46 @@ class MainActivity : AppCompatActivity() {
                 Prefs.setAccentColor(colors[which])
                 recreate()
             }
+            .show()
+    }
+
+    private fun showIconSizePicker() {
+        val sizes = arrayOf("Default", "Small", "Rounded")
+        val current = Prefs.getIconSize()
+        val currentIndex = sizes.indexOfFirst { it.lowercase() == current }
+
+        AlertDialog.Builder(this)
+            .setTitle("Icon Size")
+            .setSingleChoiceItems(sizes, currentIndex) { dialog, which ->
+                val selected = sizes[which].lowercase()
+                if (selected != current) {
+                    Prefs.setIconSize(selected)
+                    recreate()
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showIconPackPicker() {
+        val packs = IconPack.discover(this)
+        val current = Prefs.getIconPack()
+        val currentIndex = packs.indexOfFirst { it.first == current }.coerceAtLeast(0)
+
+        val labels = packs.map { it.second }.toTypedArray()
+
+        AlertDialog.Builder(this)
+            .setTitle("Icon Pack")
+            .setSingleChoiceItems(labels, currentIndex) { dialog, which ->
+                val selected = packs[which].first
+                if (selected != current) {
+                    Prefs.setIconPack(selected)
+                    loadApps()
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
             .show()
     }
 
