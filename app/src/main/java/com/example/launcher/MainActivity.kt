@@ -585,7 +585,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        loadApps()
     }
 
     @Deprecated("Deprecated in Java")
