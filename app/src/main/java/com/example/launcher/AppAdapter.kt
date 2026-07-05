@@ -38,7 +38,7 @@ class AppAdapter(
 
     class DiffCallback : DiffUtil.ItemCallback<AppInfo>() {
         override fun areItemsTheSame(old: AppInfo, new: AppInfo) =
-            old.packageName == new.packageName
+            old.id == new.id
 
         override fun areContentsTheSame(old: AppInfo, new: AppInfo) =
             old.label == new.label &&

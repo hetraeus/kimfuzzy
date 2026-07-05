@@ -3,11 +3,13 @@ package com.example.launcher
 import android.graphics.drawable.Drawable
 
 data class AppInfo(
+    val id: String,
     val label: String,
     val packageName: String,
     val activityName: String,
     val prefix: String,
     val displayName: String,
     val icon: Drawable?,
-    val iconFromPack: Boolean = false
+    val iconFromPack: Boolean = false,
+    val shortcutId: String? = null
 )

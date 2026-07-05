@@ -4,6 +4,8 @@ import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
+import android.content.pm.LauncherApps
+import android.content.pm.ShortcutInfo
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
@@ -63,6 +65,40 @@ class MainActivity : AppCompatActivity() {
         setupSettings()
 
         loadApps()
+        handleIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent?.action == "android.content.pm.action.CONFIRM_PIN_SHORTCUT") {
+            handleConfirmPinShortcut(intent)
+        }
+    }
+
+    private fun handleConfirmPinShortcut(intent: Intent) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+            val request = launcherApps.getPinItemRequest(intent)
+            if (request != null && request.requestType == LauncherApps.PinItemRequest.REQUEST_TYPE_SHORTCUT) {
+                val shortcutInfo = request.shortcutInfo
+                if (shortcutInfo != null) {
+                    if (request.isValid) {
+                        request.accept()
+                        val pkg = shortcutInfo.`package`
+                        val shortcutId = shortcutInfo.id
+                        val id = "shortcut:$pkg:$shortcutId"
+                        Prefs.addBookmark(id)
+                        Toast.makeText(this, "Shortcut pinned: ${shortcutInfo.shortLabel}", Toast.LENGTH_SHORT).show()
+                        loadApps()
+                        handler.postDelayed({ loadApps() }, 500)
+                    }
+                }
+            }
+        }
     }
 
     private fun setupWindow() {
@@ -165,7 +201,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupBookmarks() {
-        bookmarkAdapter = BookmarkAdapter { app -> launchApp(app) }
+        bookmarkAdapter = BookmarkAdapter(
+            onClick = { app -> launchApp(app) },
+            onLongClick = { app -> showBookmarkOptions(app) }
+        )
         binding.bookmarksGrid.apply {
             layoutManager = GridLayoutManager(this@MainActivity, calculateSpanCount())
             adapter = bookmarkAdapter
@@ -346,10 +385,25 @@ class MainActivity : AppCompatActivity() {
             val resolves = packageManager.queryIntentActivities(intent, 0)
             val resolveMap = resolves.associateBy { it.activityInfo.packageName }
 
+            val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+            val shortcuts = if (launcherApps.hasShortcutHostPermission()) {
+                try {
+                    val query = LauncherApps.ShortcutQuery().apply {
+                        setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED)
+                    }
+                    launcherApps.getShortcuts(query, android.os.Process.myUserHandle()) ?: emptyList()
+                } catch (e: Exception) {
+                    emptyList()
+                }
+            } else {
+                emptyList()
+            }
+            val shortcutMap = shortcuts.associateBy { "shortcut:${it.`package`}:${it.id}" }
+
             // Phase 1: metadata only — labels appear instantly
             val appsNoIcons = resolves.map { resolve ->
-                val label = resolve.loadLabel(packageManager).toString()
                 val pkg = resolve.activityInfo.packageName
+                val label = resolve.loadLabel(packageManager).toString()
                 val activity = resolve.activityInfo.name
 
                 val appInfo = try {
@@ -363,6 +417,7 @@ class MainActivity : AppCompatActivity() {
                 val display = if (prefix.isNotEmpty()) "$prefix - $label" else label
 
                 AppInfo(
+                    id = pkg,
                     label = label,
                     packageName = pkg,
                     activityName = activity,
@@ -370,9 +425,34 @@ class MainActivity : AppCompatActivity() {
                     displayName = display,
                     icon = null
                 )
-            }.sortedBy { it.displayName.lowercase() }
+            }
 
-            allApps = appsNoIcons
+            val shortcutsNoIcons = shortcuts.map { shortcut ->
+                val pkg = shortcut.`package`
+                val shortcutId = shortcut.id
+                val id = "shortcut:$pkg:$shortcutId"
+                val label = (shortcut.shortLabel ?: shortcut.longLabel ?: "Shortcut").toString()
+
+                val autoPrefix = "Shortcut"
+                val userPrefix = Prefs.getAppPrefix(id)
+                val prefix = if (!userPrefix.isNullOrBlank()) userPrefix else autoPrefix
+
+                val display = if (prefix.isNotEmpty()) "$prefix - $label" else label
+
+                AppInfo(
+                    id = id,
+                    label = label,
+                    packageName = pkg,
+                    activityName = "",
+                    prefix = prefix,
+                    displayName = display,
+                    icon = null,
+                    shortcutId = shortcutId
+                )
+            }
+
+            val allAppsNoIcons = (appsNoIcons + shortcutsNoIcons).sortedBy { it.displayName.lowercase() }
+            allApps = allAppsNoIcons
 
             withContext(Dispatchers.Main) {
                 loadBookmarks()
@@ -384,21 +464,36 @@ class MainActivity : AppCompatActivity() {
             // Phase 2: load icons in background
             val iconPackPkg = Prefs.getIconPack()
             val ctx = applicationContext
-            val appsWithIcons = appsNoIcons.map { app ->
-                val resolve = resolveMap[app.packageName]
-                val defaultIcon = resolve?.loadIcon(packageManager)
-                val (icon, fromPack) = if (iconPackPkg.isNotBlank()) {
-                    IconPack.loadIcon(
-                        ctx,
-                        iconPackPkg,
-                        app.packageName,
-                        app.activityName,
-                        defaultIcon
-                    )
+            val density = ctx.resources.displayMetrics.densityDpi
+            val appsWithIcons = allAppsNoIcons.map { app ->
+                if (app.shortcutId != null) {
+                    val shortcut = shortcutMap[app.id]
+                    val icon = if (shortcut != null && launcherApps.hasShortcutHostPermission()) {
+                        try {
+                            launcherApps.getShortcutIconDrawable(shortcut, density)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    } else {
+                        null
+                    }
+                    app.copy(icon = icon)
                 } else {
-                    defaultIcon to false
+                    val resolve = resolveMap[app.packageName]
+                    val defaultIcon = resolve?.loadIcon(packageManager)
+                    val (icon, fromPack) = if (iconPackPkg.isNotBlank()) {
+                        IconPack.loadIcon(
+                            ctx,
+                            iconPackPkg,
+                            app.packageName,
+                            app.activityName,
+                            defaultIcon
+                        )
+                    } else {
+                        defaultIcon to false
+                    }
+                    app.copy(icon = icon, iconFromPack = fromPack)
                 }
-                app.copy(icon = icon, iconFromPack = fromPack)
             }
 
             allApps = appsWithIcons
@@ -434,9 +529,13 @@ class MainActivity : AppCompatActivity() {
     private fun loadBookmarks() {
         val bookmarked = Prefs.getBookmarks()
         val bookmarks = allApps
-            .filter { it.packageName in bookmarked }
-            .sortedBy { bookmarked.indexOf(it.packageName) }
+            .filter { it.id in bookmarked }
+            .sortedBy { bookmarked.indexOf(it.id) }
             .take(calculateSpanCount() * 2)
+            .map { app ->
+                val customLabel = Prefs.getCustomLabel(app.id)
+                if (customLabel != null) app.copy(label = customLabel) else app
+            }
 
         val spanCount = calculateSpanCount()
         val maxSlots = spanCount * 2
@@ -469,6 +568,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun launchApp(app: AppInfo) {
+        if (app.shortcutId != null) {
+            val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+            try {
+                launcherApps.startShortcut(app.packageName, app.shortcutId, null, null, android.os.Process.myUserHandle())
+            } catch (e: Exception) {
+                Toast.makeText(this, "Cannot launch shortcut: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+            return
+        }
         val intent = packageManager.getLaunchIntentForPackage(app.packageName)
         if (intent != null) {
             startActivity(intent)
@@ -478,7 +586,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showAppOptions(app: AppInfo) {
-        val isBookmarked = Prefs.isBookmarked(app.packageName)
+        val isBookmarked = Prefs.isBookmarked(app.id)
         val options = arrayOf(
             if (isBookmarked) "Remove bookmark" else "Add bookmark",
             "Edit prefix",
@@ -498,11 +606,66 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun toggleBookmark(app: AppInfo) {
-        if (Prefs.isBookmarked(app.packageName)) {
-            Prefs.removeBookmark(app.packageName)
+        if (Prefs.isBookmarked(app.id)) {
+            Prefs.removeBookmark(app.id)
+            loadBookmarks()
         } else {
-            Prefs.addBookmark(app.packageName)
+            showAddBookmarkDialog(app)
         }
+    }
+
+    private fun showAddBookmarkDialog(app: AppInfo) {
+        val input = EditText(this).apply {
+            setText(app.label)
+            selectAll()
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Set bookmark label")
+            .setView(input)
+            .setPositiveButton("Add") { _, _ ->
+                val customLabel = input.text?.toString()?.trim() ?: ""
+                Prefs.setCustomLabel(app.id, customLabel)
+                Prefs.addBookmark(app.id)
+                loadApps()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showBookmarkOptions(app: AppInfo) {
+        val options = arrayOf("Rename bookmark", "Remove bookmark")
+        AlertDialog.Builder(this)
+            .setTitle(app.label.ifEmpty { "Bookmark" })
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> renameBookmark(app)
+                    1 -> removeBookmark(app)
+                }
+            }
+            .show()
+    }
+
+    private fun renameBookmark(app: AppInfo) {
+        val input = EditText(this).apply {
+            setText(app.label)
+            selectAll()
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Rename bookmark")
+            .setView(input)
+            .setPositiveButton("Save") { _, _ ->
+                val newLabel = input.text?.toString()?.trim() ?: ""
+                Prefs.setCustomLabel(app.id, newLabel)
+                loadApps()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun removeBookmark(app: AppInfo) {
+        Prefs.removeBookmark(app.id)
         loadBookmarks()
     }
 
@@ -517,11 +680,11 @@ class MainActivity : AppCompatActivity() {
             .setView(input)
             .setPositiveButton("Save") { _, _ ->
                 val prefix = input.text?.toString()?.trim() ?: ""
-                Prefs.setAppPrefix(app.packageName, prefix)
+                Prefs.setAppPrefix(app.id, prefix)
                 loadApps()
             }
             .setNegativeButton("Remove") { _, _ ->
-                Prefs.setAppPrefix(app.packageName, "")
+                Prefs.setAppPrefix(app.id, "")
                 loadApps()
             }
             .setNeutralButton("Cancel", null)

@@ -31,6 +31,16 @@ object Prefs {
     fun setAppPrefix(packageName: String, prefix: String) =
         prefs.edit().putString("prefix_$packageName", prefix).apply()
 
+    fun getCustomLabel(id: String): String? {
+        if (!prefs.contains("label_$id")) {
+            return null
+        }
+        return prefs.getString("label_$id", "") ?: ""
+    }
+
+    fun setCustomLabel(id: String, label: String) =
+        prefs.edit().putString("label_$id", label).apply()
+
     fun getBookmarks(): List<String> {
         val str = prefs.getString("bookmarks_ordered", "") ?: ""
         return if (str.isEmpty()) emptyList() else str.split(",").filter { it.isNotEmpty() }
