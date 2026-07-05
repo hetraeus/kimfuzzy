@@ -52,7 +52,7 @@ object Prefs {
         saveBookmarks(list)
     }
 
-    private fun saveBookmarks(list: List<String>) {
+    fun saveBookmarks(list: List<String>) {
         prefs.edit().putString("bookmarks_ordered", list.joinToString(",")).apply()
     }
 }

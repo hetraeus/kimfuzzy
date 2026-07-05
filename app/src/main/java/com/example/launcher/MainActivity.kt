@@ -24,6 +24,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.launcher.databinding.ActivityMainBinding
@@ -169,6 +170,48 @@ class MainActivity : AppCompatActivity() {
             layoutManager = GridLayoutManager(this@MainActivity, calculateSpanCount())
             adapter = bookmarkAdapter
         }
+
+        val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+            ItemTouchHelper.UP or ItemTouchHelper.DOWN or ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT,
+            0
+        ) {
+            override fun getMovementFlags(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder
+            ): Int {
+                val position = viewHolder.bindingAdapterPosition
+                val item = bookmarkAdapter.getItemAt(position)
+                if (item == null) {
+                    return makeMovementFlags(0, 0)
+                }
+                val dragFlags = ItemTouchHelper.UP or ItemTouchHelper.DOWN or ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT
+                return makeMovementFlags(dragFlags, 0)
+            }
+
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                val fromPos = viewHolder.bindingAdapterPosition
+                val toPos = target.bindingAdapterPosition
+                bookmarkAdapter.moveItem(fromPos, toPos)
+                return true
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
+
+            override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
+                super.clearView(recyclerView, viewHolder)
+                val newOrder = bookmarkAdapter.getItems()
+                    .filterNotNull()
+                    .map { it.packageName }
+                    .reversed()
+                Prefs.saveBookmarks(newOrder)
+                loadBookmarks()
+            }
+        })
+        itemTouchHelper.attachToRecyclerView(binding.bookmarksGrid)
     }
 
     private fun calculateSpanCount(): Int {
@@ -186,6 +229,27 @@ class MainActivity : AppCompatActivity() {
             layoutManager = LinearLayoutManager(this@MainActivity, RecyclerView.VERTICAL, true)
             adapter = appAdapter
         }
+        // Scroll to bottom when adapter data changes
+        appAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
+            override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
+                scrollToBottom()
+            }
+            override fun onItemRangeChanged(positionStart: Int, itemCount: Int) {
+                scrollToBottom()
+            }
+            override fun onItemRangeChanged(positionStart: Int, itemCount: Int, payload: Any?) {
+                scrollToBottom()
+            }
+            override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
+                scrollToBottom()
+            }
+            override fun onItemRangeMoved(fromPosition: Int, toPosition: Int, itemCount: Int) {
+                scrollToBottom()
+            }
+            override fun onChanged() {
+                scrollToBottom()
+            }
+        })
     }
 
     private fun setupFilter() {
@@ -204,8 +268,6 @@ class MainActivity : AppCompatActivity() {
                 binding.clearBtn.visibility = if (hasText) android.view.View.VISIBLE else android.view.View.GONE
                 binding.playBtn.visibility = if (hasText) android.view.View.VISIBLE else android.view.View.GONE
                 filterApps(query)
-                // Scroll after adapter updates the list
-                binding.appList.post { scrollToBottom() }
             }
         })
 

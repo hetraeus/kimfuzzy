@@ -17,6 +17,25 @@ class BookmarkAdapter(
         notifyDataSetChanged()
     }
 
+    fun getItemAt(position: Int): AppInfo? {
+        return items.getOrNull(position)
+    }
+
+    fun getItems(): List<AppInfo?> {
+        return items
+    }
+
+    fun moveItem(fromPos: Int, toPos: Int) {
+        if (fromPos in items.indices && toPos in items.indices) {
+            val mutable = items.toMutableList()
+            val temp = mutable[fromPos]
+            mutable[fromPos] = mutable[toPos]
+            mutable[toPos] = temp
+            items = mutable
+            notifyItemMoved(fromPos, toPos)
+        }
+    }
+
     override fun getItemCount() = items.size
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
