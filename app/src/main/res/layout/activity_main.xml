@@ -88,6 +88,15 @@
         android:gravity="center_vertical"
         android:padding="8dp">
 
+        <ImageButton
+            android:id="@+id/clearBtn"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_close"
+            android:visibility="gone"
+            android:contentDescription="Clear search" />
+
         <EditText
             android:id="@+id/filter"
             android:layout_width="0dp"
@@ -101,13 +110,15 @@
             android:inputType="text"
             android:background="?attr/editTextBackground" />
 
-        <ImageButton
-            android:id="@+id/clearBtn"
+        <TextView
+            android:id="@+id/playBtn"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_close"
+            android:text="▷"
+            android:textSize="24sp"
+            android:gravity="center"
             android:visibility="gone"
-            android:contentDescription="Clear search" />
+            android:contentDescription="Open app" />
     </LinearLayout>
 </LinearLayout>

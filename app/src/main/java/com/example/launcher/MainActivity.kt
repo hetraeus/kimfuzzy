@@ -89,6 +89,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.settingsBtn.setColorFilter(accent)
         binding.clearBtn.setColorFilter(accent)
+        binding.playBtn.setTextColor(accent)
 
         ViewCompat.setBackgroundTintList(binding.filter, android.content.res.ColorStateList.valueOf(accent))
     }
@@ -199,14 +200,28 @@ class MainActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
                 val query = s?.toString() ?: ""
-                binding.clearBtn.visibility = if (query.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE
+                val hasText = query.isNotEmpty()
+                binding.clearBtn.visibility = if (hasText) android.view.View.VISIBLE else android.view.View.GONE
+                binding.playBtn.visibility = if (hasText) android.view.View.VISIBLE else android.view.View.GONE
                 filterApps(query)
-                scrollToBottom()
+                // Scroll after adapter updates the list
+                binding.appList.post { scrollToBottom() }
             }
         })
 
         binding.clearBtn.setOnClickListener {
             binding.filter.text?.clear()
+        }
+
+        binding.playBtn.setOnClickListener {
+            val query = binding.filter.text?.toString() ?: ""
+            if (query.isNotEmpty()) {
+                // Launch the bottom-most app (best match at position 0 due to reverse layout)
+                val filteredApps = appAdapter.currentList
+                if (filteredApps.isNotEmpty()) {
+                    launchApp(filteredApps[0])
+                }
+            }
         }
     }
 
