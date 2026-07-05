@@ -2,8 +2,7 @@ package com.example.launcher
 
 import android.content.Context
 import android.graphics.Color
-import android.graphics.ColorMatrix
-import android.graphics.ColorMatrixColorFilter
+import android.graphics.PorterDuff
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.widget.ImageView
@@ -26,24 +25,35 @@ object IconSize {
         // Always start clean — kill any recycled background or clip
         imageView.background = null
         imageView.clipToOutline = false
+        imageView.colorFilter = null
 
         if (iconPack.isNotBlank() && icon != null && fromPack) {
-            imageView.setImageDrawable(icon)
-            imageView.scaleType = ImageView.ScaleType.FIT_CENTER
-
             val theme = Prefs.getTheme()
-            if (theme == "dark" || theme == "oled") {
-                // Invert black monochrome icons to white so they remain visible
-                val matrix = ColorMatrix(floatArrayOf(
-                    -1f, 0f, 0f, 0f, 255f,
-                    0f, -1f, 0f, 0f, 255f,
-                    0f, 0f, -1f, 0f, 255f,
-                    0f, 0f, 0f,  1f,  0f
-                ))
-                imageView.colorFilter = ColorMatrixColorFilter(matrix)
-            } else {
-                imageView.colorFilter = null
+            val iconTint = when (theme) {
+                "dark", "oled" -> Color.WHITE
+                else -> Color.BLACK
             }
+
+            // For monochrome icon packs, tint the icon and set matching background
+            val mutableIcon = icon.mutate()
+            mutableIcon.setTint(iconTint)
+            mutableIcon.setTintMode(PorterDuff.Mode.SRC_IN)
+
+            val bgColor = when (theme) {
+                "light" -> Color.WHITE
+                "dark", "oled" -> Color.BLACK
+                "sepia" -> Color.parseColor("#F4ECD8")
+                else -> Color.WHITE
+            }
+
+            // Set theme-colored background
+            val bg = GradientDrawable()
+            bg.shape = GradientDrawable.RECTANGLE
+            bg.setColor(bgColor)
+            imageView.background = bg
+
+            imageView.setImageDrawable(mutableIcon)
+            imageView.scaleType = ImageView.ScaleType.FIT_CENTER
         } else {
             // Default / system icons: keep original colors, no filter
             imageView.colorFilter = null
