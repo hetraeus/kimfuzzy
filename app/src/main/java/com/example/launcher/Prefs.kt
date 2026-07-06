@@ -23,6 +23,9 @@ object Prefs {
     fun getIconPack(): String = prefs.getString("icon_pack", "") ?: ""
     fun setIconPack(pack: String) = prefs.edit().putString("icon_pack", pack).apply()
 
+    fun getEditMode(): Boolean = prefs.getBoolean("edit_mode", false)
+    fun setEditMode(enabled: Boolean) = prefs.edit().putBoolean("edit_mode", enabled).apply()
+
     fun getAppPrefix(packageName: String): String? {
         val p = prefs.getString("prefix_$packageName", null)
         return if (p.isNullOrBlank()) null else p

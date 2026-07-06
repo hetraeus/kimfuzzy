@@ -275,6 +275,7 @@ class MainActivity : AppCompatActivity() {
                 recyclerView: RecyclerView,
                 viewHolder: RecyclerView.ViewHolder
             ): Int {
+                if (!Prefs.getEditMode()) return makeMovementFlags(0, 0)
                 val position = viewHolder.bindingAdapterPosition
                 val item = bookmarkAdapter.getItemAt(position)
                 if (item == null) {
@@ -315,7 +316,6 @@ class MainActivity : AppCompatActivity() {
             private var startX = 0f
             private var startY = 0f
             private var downTime = 0L
-            private var dragReady = false
             private var pendingHolder: RecyclerView.ViewHolder? = null
             private val touchHandler = Handler(Looper.getMainLooper())
             private var dialogRunnable: Runnable? = null
@@ -324,32 +324,30 @@ class MainActivity : AppCompatActivity() {
                 dialogRunnable?.let { touchHandler.removeCallbacks(it) }
                 dialogRunnable = null
                 pendingHolder = null
-                dragReady = false
             }
 
             override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
+                val editMode = Prefs.getEditMode()
+
                 when (e.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
                         startX = e.x
                         startY = e.y
                         downTime = System.currentTimeMillis()
-                        dragReady = false
 
                         val child = rv.findChildViewUnder(e.x, e.y)
                         pendingHolder = child?.let { rv.getChildViewHolder(it) }
 
-                        if (pendingHolder is BookmarkAdapter.ViewHolder) {
-                            val position = pendingHolder!!.bindingAdapterPosition
-                            val app = bookmarkAdapter.getItemAt(position)
-                            if (app != null) {
-                                touchHandler.postDelayed({ dragReady = true }, 2000)
-                                dialogRunnable = Runnable {
-                                    if (dragReady) {
-                                        dragReady = false
+                        if (editMode) {
+                            if (pendingHolder is BookmarkAdapter.ViewHolder) {
+                                val position = pendingHolder!!.bindingAdapterPosition
+                                val app = bookmarkAdapter.getItemAt(position)
+                                if (app != null) {
+                                    dialogRunnable = Runnable {
                                         showBookmarkOptions(app)
                                     }
+                                    touchHandler.postDelayed(dialogRunnable!!, 2000)
                                 }
-                                touchHandler.postDelayed(dialogRunnable!!, 5000)
                             }
                         }
                         return false
@@ -357,35 +355,34 @@ class MainActivity : AppCompatActivity() {
 
                     MotionEvent.ACTION_MOVE -> {
                         val dx = e.x - startX
-                        val dy = startY - e.y
+                        val dy = startY - e.y  // positive = up
 
-                        if (dragReady && (abs(dx) > clickSlop || abs(dy) > clickSlop)) {
-                            dragReady = false
-                            dialogRunnable?.let { touchHandler.removeCallbacks(it) }
-                            dialogRunnable = null
-                            itemTouchHelper.startDrag(pendingHolder!!)
-                            return false
-                        }
-
-                        if (abs(dx) > clickSlop || abs(dy) > clickSlop) {
-                            cancelPending()
-                        }
-
-                        if (dx > swipeThreshold && abs(dx) > abs(dy) * 2) {
-                            if (isTermuxInstalled()) {
+                        if (editMode) {
+                            if (abs(dx) > clickSlop || abs(dy) > clickSlop) {
                                 cancelPending()
-                                openTerminal()
+                                if (pendingHolder is BookmarkAdapter.ViewHolder) {
+                                    itemTouchHelper.startDrag(pendingHolder!!)
+                                }
+                            }
+                            return false
+                        } else {
+                            // Locked mode: swipes only
+                            if (dx > swipeThreshold && abs(dx) > abs(dy) * 2) {
+                                if (isTermuxInstalled()) {
+                                    cancelPending()
+                                    openTerminal()
+                                    return true
+                                }
+                            }
+
+                            if (dy > swipeThreshold && dy > abs(dx) * 2) {
+                                cancelPending()
+                                showFilter()
                                 return true
                             }
-                        }
 
-                        if (dy > swipeThreshold && dy > abs(dx) * 2) {
-                            cancelPending()
-                            showFilter()
-                            return true
+                            return false
                         }
-
-                        return false
                     }
 
                     MotionEvent.ACTION_UP -> {
@@ -395,16 +392,20 @@ class MainActivity : AppCompatActivity() {
 
                         cancelPending()
 
-                        if (abs(dx) < clickSlop && abs(dy) < clickSlop && duration < 2000) {
-                            val child = rv.findChildViewUnder(e.x, e.y)
-                            if (child != null) {
-                                val position = rv.getChildAdapterPosition(child)
-                                val app = bookmarkAdapter.getItemAt(position)
-                                if (app != null) {
-                                    launchApp(app)
+                        if (!editMode) {
+                            // Locked mode: short tap opens app
+                            if (abs(dx) < clickSlop && abs(dy) < clickSlop && duration < 2000) {
+                                val child = rv.findChildViewUnder(e.x, e.y)
+                                if (child != null) {
+                                    val position = rv.getChildAdapterPosition(child)
+                                    val app = bookmarkAdapter.getItemAt(position)
+                                    if (app != null) {
+                                        launchApp(app)
+                                    }
                                 }
                             }
                         }
+                        // Edit mode: do nothing on tap
                         return false
                     }
 
@@ -646,7 +647,6 @@ class MainActivity : AppCompatActivity() {
                 )
             }
 
-            // Preserve existing icons so the grid never blanks during reload
             val allAppsNoIcons = (appsNoIcons + shortcutsNoIcons)
                 .sortedBy { it.displayName.lowercase() }
                 .map { app ->
@@ -664,7 +664,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // Phase 2: load icons in background (overwrites with new icons if packs changed)
             val iconPackPkg = Prefs.getIconPack()
             val ctx = applicationContext
             val density = ctx.resources.displayMetrics.densityDpi
@@ -829,7 +828,6 @@ class MainActivity : AppCompatActivity() {
                 val customLabel = input.text?.toString()?.trim() ?: ""
                 Prefs.setCustomLabel(app.id, customLabel)
                 Prefs.addBookmark(app.id)
-                // FIX: don't reload the whole app list; just refresh the grid instantly
                 loadBookmarks()
             }
             .setNegativeButton("Cancel", null)
@@ -902,7 +900,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showSettingsDialog() {
-        val options = arrayOf("Theme", "Accent Color", "Icon Size", "Icon Pack", "Set as Default Launcher")
+        val editMode = Prefs.getEditMode()
+        val editLabel = if (editMode) "💮 Bookmarks locked" else "✏️ Edit bookmarks"
+        val options = arrayOf("Theme", "Accent Color", "Icon Size", "Icon Pack", editLabel, "Set as Default Launcher")
 
         AlertDialog.Builder(this)
             .setTitle("Settings")
@@ -912,7 +912,15 @@ class MainActivity : AppCompatActivity() {
                     1 -> showAccentPicker()
                     2 -> showIconSizePicker()
                     3 -> showIconPackPicker()
-                    4 -> promptSetDefaultLauncher()
+                    4 -> {
+                        Prefs.setEditMode(!editMode)
+                        Toast.makeText(
+                            this,
+                            if (!editMode) "✏️ Edit mode enabled" else "💮 Locked mode enabled",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    5 -> promptSetDefaultLauncher()
                 }
             }
             .setNegativeButton("Close", null)
