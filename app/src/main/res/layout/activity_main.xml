@@ -50,6 +50,7 @@
 
     <!-- Content Area -->
     <FrameLayout
+        android:id="@+id/contentArea"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
@@ -82,11 +83,13 @@
 
     <!-- Filter -->
     <LinearLayout
+        android:id="@+id/filterContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:padding="8dp">
+        android:padding="8dp"
+        android:visibility="gone">
 
         <ImageButton
             android:id="@+id/clearBtn"
@@ -108,7 +111,7 @@
             android:textAlignment="center"
             android:imeOptions="actionSearch|flagNoExtractUi"
             android:inputType="text"
-            android:background="?attr/editTextBackground" />
+            android:background="@android:color/transparent" />
 
         <TextView
             android:id="@+id/playBtn"

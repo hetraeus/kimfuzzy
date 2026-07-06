@@ -43,7 +43,7 @@ object Prefs {
 
     fun getBookmarks(): List<String> {
         val str = prefs.getString("bookmarks_ordered", "") ?: ""
-        return if (str.isEmpty()) emptyList() else str.split(",").filter { it.isNotEmpty() }
+        return if (str.isEmpty()) emptyList() else str.split(",")
     }
 
     fun isBookmarked(packageName: String): Boolean = packageName in getBookmarks()
@@ -51,15 +51,23 @@ object Prefs {
     fun addBookmark(packageName: String) {
         val list = getBookmarks().toMutableList()
         if (!list.contains(packageName)) {
-            list.add(packageName)
+            val firstEmpty = list.indexOf("")
+            if (firstEmpty != -1) {
+                list[firstEmpty] = packageName
+            } else {
+                list.add(packageName)
+            }
             saveBookmarks(list)
         }
     }
 
     fun removeBookmark(packageName: String) {
         val list = getBookmarks().toMutableList()
-        list.remove(packageName)
-        saveBookmarks(list)
+        val index = list.indexOf(packageName)
+        if (index != -1) {
+            list[index] = ""
+            saveBookmarks(list)
+        }
     }
 
     fun saveBookmarks(list: List<String>) {

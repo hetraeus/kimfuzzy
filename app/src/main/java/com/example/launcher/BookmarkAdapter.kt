@@ -6,10 +6,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.example.launcher.databinding.ItemBookmarkBinding
 
-class BookmarkAdapter(
-    private val onClick: (AppInfo) -> Unit,
-    private val onLongClick: (AppInfo) -> Unit
-) : RecyclerView.Adapter<BookmarkAdapter.ViewHolder>() {
+class BookmarkAdapter : RecyclerView.Adapter<BookmarkAdapter.ViewHolder>() {
 
     private var items: List<AppInfo?> = emptyList()
 
@@ -53,19 +50,12 @@ class BookmarkAdapter(
             holder.binding.icon.setImageDrawable(null)
             holder.binding.icon.colorFilter = null
             holder.binding.name.text = ""
-            holder.binding.root.setOnClickListener(null)
-            holder.binding.root.setOnLongClickListener(null)
             holder.binding.root.isClickable = false
         } else {
             holder.binding.root.visibility = View.VISIBLE
             holder.binding.name.text = app.label
             holder.binding.name.setTextColor(ThemeUtils.getTextColor())
             IconSize.apply(holder.binding.icon, app.icon, app.iconFromPack)
-            holder.binding.root.setOnClickListener { onClick(app) }
-            holder.binding.root.setOnLongClickListener {
-                onLongClick(app)
-                true
-            }
             holder.binding.root.isClickable = true
         }
     }

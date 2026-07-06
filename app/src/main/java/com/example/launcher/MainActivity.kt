@@ -1,11 +1,12 @@
 package com.example.launcher
 
 import android.app.AlarmManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherApps
-import android.content.pm.ShortcutInfo
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
@@ -16,6 +17,8 @@ import android.provider.CalendarContract
 import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.MotionEvent
+import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.Toast
@@ -36,17 +39,34 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var appAdapter: AppAdapter
     private lateinit var bookmarkAdapter: BookmarkAdapter
+    private lateinit var itemTouchHelper: ItemTouchHelper
     private val handler = Handler(Looper.getMainLooper())
     private val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     private val dateFormat = SimpleDateFormat("d MMMM", Locale.getDefault())
     private var allApps = listOf<AppInfo>()
     private var isKeyboardVisible = false
+
+    private val packageReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                Intent.ACTION_PACKAGE_ADDED,
+                Intent.ACTION_PACKAGE_REMOVED,
+                Intent.ACTION_PACKAGE_CHANGED,
+                Intent.ACTION_PACKAGE_REPLACED -> {
+                    if (intent.data?.schemeSpecificPart != packageName) {
+                        loadApps()
+                    }
+                }
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Prefs.init(this)
@@ -63,9 +83,27 @@ class MainActivity : AppCompatActivity() {
         setupFilter()
         setupKeyboardListener()
         setupSettings()
+        setupGridTouchListener()
 
         loadApps()
         handleIntent(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_PACKAGE_ADDED)
+            addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addAction(Intent.ACTION_PACKAGE_CHANGED)
+            addAction(Intent.ACTION_PACKAGE_REPLACED)
+            addDataScheme("package")
+        }
+        registerReceiver(packageReceiver, filter)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        unregisterReceiver(packageReceiver)
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -74,8 +112,27 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
-        if (intent?.action == "android.content.pm.action.CONFIRM_PIN_SHORTCUT") {
-            handleConfirmPinShortcut(intent)
+        when (intent?.action) {
+            "android.content.pm.action.CONFIRM_PIN_SHORTCUT" -> handleConfirmPinShortcut(intent)
+            Intent.ACTION_MAIN -> {
+                if (intent.categories?.contains(Intent.CATEGORY_HOME) == true) {
+                    resetToBookmarks()
+                }
+            }
+        }
+    }
+
+    private fun resetToBookmarks() {
+        binding.filter.text?.clear()
+        binding.filter.clearFocus()
+        if (isKeyboardVisible) {
+            hideKeyboard()
+        } else {
+            binding.filterContainer.visibility = View.GONE
+            binding.bookmarksGrid.visibility = View.VISIBLE
+            binding.appList.visibility = View.GONE
+            binding.emptyState.visibility = View.GONE
+            loadBookmarks()
         }
     }
 
@@ -127,8 +184,6 @@ class MainActivity : AppCompatActivity() {
         binding.settingsBtn.setColorFilter(accent)
         binding.clearBtn.setColorFilter(accent)
         binding.playBtn.setTextColor(accent)
-
-        ViewCompat.setBackgroundTintList(binding.filter, android.content.res.ColorStateList.valueOf(accent))
     }
 
     private fun setupTopBar() {
@@ -194,26 +249,28 @@ class MainActivity : AppCompatActivity() {
         val nextAlarm = alarmManager.nextAlarmClock
         binding.nextAlarm.text = if (nextAlarm != null) {
             val time = android.text.format.DateFormat.getTimeFormat(this).format(Date(nextAlarm.triggerTime))
-            "Alarm: $time"
+            "⏰ $time"
         } else {
             ""
         }
     }
 
     private fun setupBookmarks() {
-        bookmarkAdapter = BookmarkAdapter(
-            onClick = { app -> launchApp(app) },
-            onLongClick = { app -> showBookmarkOptions(app) }
-        )
+        bookmarkAdapter = BookmarkAdapter()
         binding.bookmarksGrid.apply {
-            layoutManager = GridLayoutManager(this@MainActivity, calculateSpanCount())
+            layoutManager = object : GridLayoutManager(this@MainActivity, calculateSpanCount()) {
+                override fun canScrollVertically(): Boolean = false
+                override fun canScrollHorizontally(): Boolean = false
+            }
             adapter = bookmarkAdapter
         }
 
-        val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+        itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
             ItemTouchHelper.UP or ItemTouchHelper.DOWN or ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT,
             0
         ) {
+            override fun isLongPressDragEnabled(): Boolean = false
+
             override fun getMovementFlags(
                 recyclerView: RecyclerView,
                 viewHolder: RecyclerView.ViewHolder
@@ -243,20 +300,146 @@ class MainActivity : AppCompatActivity() {
             override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
                 super.clearView(recyclerView, viewHolder)
                 val newOrder = bookmarkAdapter.getItems()
-                    .filterNotNull()
-                    .map { it.packageName }
-                    .reversed()
+                    .map { it?.id ?: "" }
                 Prefs.saveBookmarks(newOrder)
-                loadBookmarks()
             }
         })
         itemTouchHelper.attachToRecyclerView(binding.bookmarksGrid)
     }
 
-    private fun calculateSpanCount(): Int {
-        val dm = resources.displayMetrics
-        val dpWidth = dm.widthPixels / dm.density
-        return (dpWidth / 80).toInt().coerceIn(4, 6)
+    private fun setupGridTouchListener() {
+        val swipeThreshold = 150f * resources.displayMetrics.density
+        val clickSlop = 20f * resources.displayMetrics.density
+
+        binding.bookmarksGrid.addOnItemTouchListener(object : RecyclerView.OnItemTouchListener {
+            private var startX = 0f
+            private var startY = 0f
+            private var downTime = 0L
+            private var dragReady = false
+            private var pendingHolder: RecyclerView.ViewHolder? = null
+            private val touchHandler = Handler(Looper.getMainLooper())
+            private var dialogRunnable: Runnable? = null
+
+            private fun cancelPending() {
+                dialogRunnable?.let { touchHandler.removeCallbacks(it) }
+                dialogRunnable = null
+                pendingHolder = null
+                dragReady = false
+            }
+
+            override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
+                when (e.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        startX = e.x
+                        startY = e.y
+                        downTime = System.currentTimeMillis()
+                        dragReady = false
+
+                        val child = rv.findChildViewUnder(e.x, e.y)
+                        pendingHolder = child?.let { rv.getChildViewHolder(it) }
+
+                        if (pendingHolder is BookmarkAdapter.ViewHolder) {
+                            val position = pendingHolder!!.bindingAdapterPosition
+                            val app = bookmarkAdapter.getItemAt(position)
+                            if (app != null) {
+                                touchHandler.postDelayed({ dragReady = true }, 2000)
+                                dialogRunnable = Runnable {
+                                    if (dragReady) {
+                                        dragReady = false
+                                        showBookmarkOptions(app)
+                                    }
+                                }
+                                touchHandler.postDelayed(dialogRunnable!!, 5000)
+                            }
+                        }
+                        return false
+                    }
+
+                    MotionEvent.ACTION_MOVE -> {
+                        val dx = e.x - startX
+                        val dy = startY - e.y
+
+                        if (dragReady && (abs(dx) > clickSlop || abs(dy) > clickSlop)) {
+                            dragReady = false
+                            dialogRunnable?.let { touchHandler.removeCallbacks(it) }
+                            dialogRunnable = null
+                            itemTouchHelper.startDrag(pendingHolder!!)
+                            return false
+                        }
+
+                        if (abs(dx) > clickSlop || abs(dy) > clickSlop) {
+                            cancelPending()
+                        }
+
+                        if (dx > swipeThreshold && abs(dx) > abs(dy) * 2) {
+                            if (isTermuxInstalled()) {
+                                cancelPending()
+                                openTerminal()
+                                return true
+                            }
+                        }
+
+                        if (dy > swipeThreshold && dy > abs(dx) * 2) {
+                            cancelPending()
+                            showFilter()
+                            return true
+                        }
+
+                        return false
+                    }
+
+                    MotionEvent.ACTION_UP -> {
+                        val dx = e.x - startX
+                        val dy = e.y - startY
+                        val duration = System.currentTimeMillis() - downTime
+
+                        cancelPending()
+
+                        if (abs(dx) < clickSlop && abs(dy) < clickSlop && duration < 2000) {
+                            val child = rv.findChildViewUnder(e.x, e.y)
+                            if (child != null) {
+                                val position = rv.getChildAdapterPosition(child)
+                                val app = bookmarkAdapter.getItemAt(position)
+                                if (app != null) {
+                                    launchApp(app)
+                                }
+                            }
+                        }
+                        return false
+                    }
+
+                    MotionEvent.ACTION_CANCEL -> {
+                        cancelPending()
+                        return false
+                    }
+
+                    else -> return false
+                }
+            }
+
+            override fun onTouchEvent(rv: RecyclerView, e: MotionEvent) {}
+            override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {}
+        })
+    }
+
+    private fun calculateSpanCount(): Int = 5
+
+    private fun isTermuxInstalled(): Boolean {
+        return try {
+            packageManager.getPackageInfo("com.termux", 0)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun openTerminal() {
+        val intent = Intent().apply {
+            setClassName("com.termux", "com.termux.app.TermuxActivity")
+        }
+        if (intent.resolveActivity(packageManager) != null) {
+            startActivity(intent)
+        }
     }
 
     private fun setupAppList() {
@@ -268,7 +451,6 @@ class MainActivity : AppCompatActivity() {
             layoutManager = LinearLayoutManager(this@MainActivity, RecyclerView.VERTICAL, true)
             adapter = appAdapter
         }
-        // Scroll to bottom when adapter data changes
         appAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
             override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
                 scrollToBottom()
@@ -304,8 +486,8 @@ class MainActivity : AppCompatActivity() {
             override fun afterTextChanged(s: Editable?) {
                 val query = s?.toString() ?: ""
                 val hasText = query.isNotEmpty()
-                binding.clearBtn.visibility = if (hasText) android.view.View.VISIBLE else android.view.View.GONE
-                binding.playBtn.visibility = if (hasText) android.view.View.VISIBLE else android.view.View.GONE
+                binding.clearBtn.visibility = if (hasText) View.VISIBLE else View.GONE
+                binding.playBtn.visibility = if (hasText) View.VISIBLE else View.GONE
                 filterApps(query)
             }
         })
@@ -317,13 +499,23 @@ class MainActivity : AppCompatActivity() {
         binding.playBtn.setOnClickListener {
             val query = binding.filter.text?.toString() ?: ""
             if (query.isNotEmpty()) {
-                // Launch the bottom-most app (best match at position 0 due to reverse layout)
                 val filteredApps = appAdapter.currentList
                 if (filteredApps.isNotEmpty()) {
                     launchApp(filteredApps[0])
                 }
             }
         }
+    }
+
+    private fun showFilter() {
+        if (binding.filterContainer.visibility == View.VISIBLE) return
+        binding.bookmarksGrid.visibility = View.GONE
+        binding.appList.visibility = View.VISIBLE
+        binding.filterContainer.visibility = View.VISIBLE
+        binding.filter.requestFocus()
+        showKeyboard()
+        filterApps(binding.filter.text?.toString() ?: "")
+        scrollToBottom()
     }
 
     private fun setupKeyboardListener() {
@@ -351,14 +543,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun onKeyboardVisibilityChanged() {
         if (isKeyboardVisible) {
-            binding.bookmarksGrid.visibility = android.view.View.GONE
-            binding.appList.visibility = android.view.View.VISIBLE
+            binding.bookmarksGrid.visibility = View.GONE
+            binding.appList.visibility = View.VISIBLE
+            binding.filterContainer.visibility = View.VISIBLE
             filterApps(binding.filter.text?.toString() ?: "")
             scrollToBottom()
         } else {
-            binding.bookmarksGrid.visibility = android.view.View.VISIBLE
-            binding.appList.visibility = android.view.View.GONE
-            binding.emptyState.visibility = android.view.View.GONE
+            binding.bookmarksGrid.visibility = View.VISIBLE
+            binding.appList.visibility = View.GONE
+            binding.filterContainer.visibility = View.GONE
+            binding.emptyState.visibility = View.GONE
             binding.filter.clearFocus()
             hideKeyboard()
             loadBookmarks()
@@ -400,7 +594,6 @@ class MainActivity : AppCompatActivity() {
             }
             val shortcutMap = shortcuts.associateBy { "shortcut:${it.`package`}:${it.id}" }
 
-            // Phase 1: metadata only — labels appear instantly
             val appsNoIcons = resolves.map { resolve ->
                 val pkg = resolve.activityInfo.packageName
                 val label = resolve.loadLabel(packageManager).toString()
@@ -461,7 +654,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // Phase 2: load icons in background
             val iconPackPkg = Prefs.getIconPack()
             val ctx = applicationContext
             val density = ctx.resources.displayMetrics.densityDpi
@@ -528,28 +720,27 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadBookmarks() {
         val bookmarked = Prefs.getBookmarks()
-        val bookmarks = allApps
-            .filter { it.id in bookmarked }
-            .sortedBy { bookmarked.indexOf(it.id) }
-            .take(calculateSpanCount() * 2)
-            .map { app ->
-                val customLabel = Prefs.getCustomLabel(app.id)
-                if (customLabel != null) app.copy(label = customLabel) else app
+        val maxSlots = calculateSpanCount() * 7 // 5×7 = 35
+        val appsMap = allApps.associateBy { it.id }
+
+        val grid = MutableList<AppInfo?>(maxSlots) { null }
+
+        bookmarked.forEachIndexed { index, id ->
+            if (id.isNotEmpty() && index < maxSlots) {
+                appsMap[id]?.let { app ->
+                    val customLabel = Prefs.getCustomLabel(app.id)
+                    grid[index] = if (customLabel != null) app.copy(label = customLabel) else app
+                }
             }
+        }
 
-        val spanCount = calculateSpanCount()
-        val maxSlots = spanCount * 2
-        val reversed = bookmarks.reversed()
-        val padding = (maxSlots - reversed.size).coerceAtLeast(0)
-        val padded = List(padding) { null } + reversed
-
-        bookmarkAdapter.submitList(padded)
+        bookmarkAdapter.submitList(grid)
     }
 
     private fun filterApps(query: String) {
         if (query.isEmpty()) {
             appAdapter.submitList(allApps)
-            binding.emptyState.visibility = android.view.View.GONE
+            binding.emptyState.visibility = View.GONE
             return
         }
 
@@ -564,7 +755,7 @@ class MainActivity : AppCompatActivity() {
             .map { it.first }
 
         appAdapter.submitList(scored)
-        binding.emptyState.visibility = if (scored.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
+        binding.emptyState.visibility = if (scored.isEmpty()) View.VISIBLE else View.GONE
     }
 
     private fun launchApp(app: AppInfo) {
@@ -588,7 +779,7 @@ class MainActivity : AppCompatActivity() {
     private fun showAppOptions(app: AppInfo) {
         val isBookmarked = Prefs.isBookmarked(app.id)
         val options = arrayOf(
-            if (isBookmarked) "Remove bookmark" else "Add bookmark",
+            if (isBookmarked) "Hide bookmark" else "Add bookmark",
             "Edit prefix",
             "App info"
         )
@@ -634,13 +825,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showBookmarkOptions(app: AppInfo) {
-        val options = arrayOf("Rename bookmark", "Remove bookmark")
+        val options = arrayOf("Rename bookmark", "Hide bookmark")
         AlertDialog.Builder(this)
             .setTitle(app.label.ifEmpty { "Bookmark" })
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> renameBookmark(app)
-                    1 -> removeBookmark(app)
+                    1 -> hideBookmark(app)
                 }
             }
             .show()
@@ -664,7 +855,7 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun removeBookmark(app: AppInfo) {
+    private fun hideBookmark(app: AppInfo) {
         Prefs.removeBookmark(app.id)
         loadBookmarks()
     }
@@ -823,15 +1014,10 @@ class MainActivity : AppCompatActivity() {
         imm.hideSoftInputFromWindow(binding.filter.windowToken, 0)
     }
 
-    override fun onResume() {
-        super.onResume()
-    }
-
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        if (isKeyboardVisible) {
-            binding.filter.clearFocus()
-            hideKeyboard()
+        if (binding.filterContainer.visibility == View.VISIBLE || isKeyboardVisible) {
+            resetToBookmarks()
         }
     }
 }
