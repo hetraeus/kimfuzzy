@@ -1,12 +1,15 @@
 package com.example.launcher
 
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.example.launcher.databinding.ItemBookmarkBinding
 
-class BookmarkAdapter : RecyclerView.Adapter<BookmarkAdapter.ViewHolder>() {
+class BookmarkAdapter(
+    private val onStartDrag: ((RecyclerView.ViewHolder) -> Unit)? = null
+) : RecyclerView.Adapter<BookmarkAdapter.ViewHolder>() {
 
     private var items: List<AppInfo?> = emptyList()
 
@@ -50,6 +53,7 @@ class BookmarkAdapter : RecyclerView.Adapter<BookmarkAdapter.ViewHolder>() {
             holder.binding.icon.setImageDrawable(null)
             holder.binding.icon.colorFilter = null
             holder.binding.name.text = ""
+            holder.binding.root.setOnTouchListener(null)
             holder.binding.root.isClickable = false
         } else {
             holder.binding.root.visibility = View.VISIBLE
@@ -57,6 +61,24 @@ class BookmarkAdapter : RecyclerView.Adapter<BookmarkAdapter.ViewHolder>() {
             holder.binding.name.setTextColor(ThemeUtils.getTextColor())
             IconSize.apply(holder.binding.icon, app.icon, app.iconFromPack)
             holder.binding.root.isClickable = true
+            
+            onStartDrag?.let { startDrag ->
+                var hasMoved = false
+                holder.binding.root.setOnTouchListener { _, event ->
+                    when (event.actionMasked) {
+                        MotionEvent.ACTION_MOVE -> {
+                            if (!hasMoved) {
+                                hasMoved = true
+                                startDrag(holder)
+                            }
+                            true
+                        }
+                        else -> false
+                    }
+                }
+            } ?: run {
+                holder.binding.root.setOnTouchListener(null)
+            }
         }
     }
 

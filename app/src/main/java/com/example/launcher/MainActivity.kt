@@ -256,7 +256,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupBookmarks() {
-        bookmarkAdapter = BookmarkAdapter()
+        bookmarkAdapter = BookmarkAdapter(
+            onStartDrag = { holder ->
+                if (Prefs.getEditMode()) {
+                    itemTouchHelper.startDrag(holder)
+                }
+            }
+        )
         binding.bookmarksGrid.apply {
             layoutManager = object : GridLayoutManager(this@MainActivity, calculateSpanCount()) {
                 override fun canScrollVertically(): Boolean = false
@@ -316,6 +322,7 @@ class MainActivity : AppCompatActivity() {
             private var startX = 0f
             private var startY = 0f
             private var downTime = 0L
+            private var hasMoved = false
             private var pendingHolder: RecyclerView.ViewHolder? = null
             private val touchHandler = Handler(Looper.getMainLooper())
             private var dialogRunnable: Runnable? = null
@@ -334,6 +341,7 @@ class MainActivity : AppCompatActivity() {
                         startX = e.x
                         startY = e.y
                         downTime = System.currentTimeMillis()
+                        hasMoved = false
 
                         val child = rv.findChildViewUnder(e.x, e.y)
                         pendingHolder = child?.let { rv.getChildViewHolder(it) }
@@ -344,7 +352,9 @@ class MainActivity : AppCompatActivity() {
                                 val app = bookmarkAdapter.getItemAt(position)
                                 if (app != null) {
                                     dialogRunnable = Runnable {
-                                        showBookmarkOptions(app)
+                                        if (!hasMoved) {
+                                            showBookmarkOptions(app)
+                                        }
                                     }
                                     touchHandler.postDelayed(dialogRunnable!!, 2000)
                                 }
@@ -355,15 +365,13 @@ class MainActivity : AppCompatActivity() {
 
                     MotionEvent.ACTION_MOVE -> {
                         val dx = e.x - startX
-                        val dy = startY - e.y  // positive = up
+                        val dy = startY - e.y
+
+                        if (abs(dx) > clickSlop || abs(dy) > clickSlop) {
+                            hasMoved = true
+                        }
 
                         if (editMode) {
-                            if (abs(dx) > clickSlop || abs(dy) > clickSlop) {
-                                cancelPending()
-                                if (pendingHolder is BookmarkAdapter.ViewHolder) {
-                                    itemTouchHelper.startDrag(pendingHolder!!)
-                                }
-                            }
                             return false
                         } else {
                             // Locked mode: swipes only
@@ -405,7 +413,6 @@ class MainActivity : AppCompatActivity() {
                                 }
                             }
                         }
-                        // Edit mode: do nothing on tap
                         return false
                     }
 
@@ -422,7 +429,6 @@ class MainActivity : AppCompatActivity() {
             override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {}
         })
     }
-
     private fun calculateSpanCount(): Int = 5
 
     private fun isTermuxInstalled(): Boolean {
