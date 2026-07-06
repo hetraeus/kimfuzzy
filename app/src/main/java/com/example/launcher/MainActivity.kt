@@ -575,6 +575,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadApps() {
         lifecycleScope.launch(Dispatchers.IO) {
+            val oldAppsMap = allApps.associateBy { it.id }
+
             val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
             val resolves = packageManager.queryIntentActivities(intent, 0)
             val resolveMap = resolves.associateBy { it.activityInfo.packageName }
@@ -644,7 +646,15 @@ class MainActivity : AppCompatActivity() {
                 )
             }
 
-            val allAppsNoIcons = (appsNoIcons + shortcutsNoIcons).sortedBy { it.displayName.lowercase() }
+            // Preserve existing icons so the grid never blanks during reload
+            val allAppsNoIcons = (appsNoIcons + shortcutsNoIcons)
+                .sortedBy { it.displayName.lowercase() }
+                .map { app ->
+                    oldAppsMap[app.id]?.let { old ->
+                        if (old.icon != null) app.copy(icon = old.icon, iconFromPack = old.iconFromPack) else app
+                    } ?: app
+                }
+
             allApps = allAppsNoIcons
 
             withContext(Dispatchers.Main) {
@@ -654,6 +664,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+            // Phase 2: load icons in background (overwrites with new icons if packs changed)
             val iconPackPkg = Prefs.getIconPack()
             val ctx = applicationContext
             val density = ctx.resources.displayMetrics.densityDpi
@@ -818,7 +829,8 @@ class MainActivity : AppCompatActivity() {
                 val customLabel = input.text?.toString()?.trim() ?: ""
                 Prefs.setCustomLabel(app.id, customLabel)
                 Prefs.addBookmark(app.id)
-                loadApps()
+                // FIX: don't reload the whole app list; just refresh the grid instantly
+                loadBookmarks()
             }
             .setNegativeButton("Cancel", null)
             .show()
