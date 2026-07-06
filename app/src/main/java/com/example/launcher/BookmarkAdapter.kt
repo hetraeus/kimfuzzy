@@ -66,6 +66,10 @@ class BookmarkAdapter(
                 var hasMoved = false
                 holder.binding.root.setOnTouchListener { _, event ->
                     when (event.actionMasked) {
+                        MotionEvent.ACTION_DOWN -> {
+                            hasMoved = false
+                            false
+                        }
                         MotionEvent.ACTION_MOVE -> {
                             if (!hasMoved) {
                                 hasMoved = true

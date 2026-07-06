@@ -313,7 +313,7 @@ class MainActivity : AppCompatActivity() {
         })
         itemTouchHelper.attachToRecyclerView(binding.bookmarksGrid)
     }
-
+    private fun calculateSpanCount(): Int = 5
     private fun setupGridTouchListener() {
         val swipeThreshold = 150f * resources.displayMetrics.density
         val clickSlop = 20f * resources.displayMetrics.density
@@ -323,14 +323,12 @@ class MainActivity : AppCompatActivity() {
             private var startY = 0f
             private var downTime = 0L
             private var hasMoved = false
-            private var pendingHolder: RecyclerView.ViewHolder? = null
             private val touchHandler = Handler(Looper.getMainLooper())
             private var dialogRunnable: Runnable? = null
 
             private fun cancelPending() {
                 dialogRunnable?.let { touchHandler.removeCallbacks(it) }
                 dialogRunnable = null
-                pendingHolder = null
             }
 
             override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
@@ -343,12 +341,10 @@ class MainActivity : AppCompatActivity() {
                         downTime = System.currentTimeMillis()
                         hasMoved = false
 
-                        val child = rv.findChildViewUnder(e.x, e.y)
-                        pendingHolder = child?.let { rv.getChildViewHolder(it) }
-
                         if (editMode) {
-                            if (pendingHolder is BookmarkAdapter.ViewHolder) {
-                                val position = pendingHolder!!.bindingAdapterPosition
+                            val child = rv.findChildViewUnder(e.x, e.y)
+                            if (child != null) {
+                                val position = rv.getChildAdapterPosition(child)
                                 val app = bookmarkAdapter.getItemAt(position)
                                 if (app != null) {
                                     dialogRunnable = Runnable {
@@ -356,7 +352,7 @@ class MainActivity : AppCompatActivity() {
                                             showBookmarkOptions(app)
                                         }
                                     }
-                                    touchHandler.postDelayed(dialogRunnable!!, 2000)
+                                    touchHandler.postDelayed(dialogRunnable!!, 1400)
                                 }
                             }
                         }
@@ -369,12 +365,10 @@ class MainActivity : AppCompatActivity() {
 
                         if (abs(dx) > clickSlop || abs(dy) > clickSlop) {
                             hasMoved = true
+                            cancelPending()
                         }
 
-                        if (editMode) {
-                            return false
-                        } else {
-                            // Locked mode: swipes only
+                        if (!editMode) {
                             if (dx > swipeThreshold && abs(dx) > abs(dy) * 2) {
                                 if (isTermuxInstalled()) {
                                     cancelPending()
@@ -388,9 +382,9 @@ class MainActivity : AppCompatActivity() {
                                 showFilter()
                                 return true
                             }
-
-                            return false
                         }
+
+                        return false
                     }
 
                     MotionEvent.ACTION_UP -> {
@@ -401,7 +395,6 @@ class MainActivity : AppCompatActivity() {
                         cancelPending()
 
                         if (!editMode) {
-                            // Locked mode: short tap opens app
                             if (abs(dx) < clickSlop && abs(dy) < clickSlop && duration < 2000) {
                                 val child = rv.findChildViewUnder(e.x, e.y)
                                 if (child != null) {
@@ -429,7 +422,6 @@ class MainActivity : AppCompatActivity() {
             override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {}
         })
     }
-    private fun calculateSpanCount(): Int = 5
 
     private fun isTermuxInstalled(): Boolean {
         return try {
