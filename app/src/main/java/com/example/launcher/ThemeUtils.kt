@@ -41,4 +41,11 @@ object ThemeUtils {
             else -> Color.parseColor("#757575")
         }
     }
+    fun getAccentColor(context: Context): Int {
+        val attrs = intArrayOf(android.R.attr.colorPrimary)
+        val ta = context.obtainStyledAttributes(attrs)
+        val color = ta.getColor(0, Color.parseColor("#FF4081"))
+        ta.recycle()
+        return color
+    }
 }

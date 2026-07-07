@@ -14,9 +14,6 @@ object Prefs {
     fun getTheme(): String = prefs.getString("theme", "light") ?: "light"
     fun setTheme(theme: String) = prefs.edit().putString("theme", theme).apply()
 
-    fun getAccentColor(): Int = prefs.getInt("accent", Color.parseColor("#FF4081"))
-    fun setAccentColor(color: Int) = prefs.edit().putInt("accent", color).apply()
-
     fun getIconSize(): String = prefs.getString("icon_size", "default") ?: "default"
     fun setIconSize(size: String) = prefs.edit().putString("icon_size", size).apply()
 
@@ -75,5 +72,15 @@ object Prefs {
 
     fun saveBookmarks(list: List<String>) {
         prefs.edit().putString("bookmarks_ordered", list.joinToString(",")).apply()
+    }
+
+    private const val LAST_LAUNCH_PREFIX = "last_launch_"
+
+    fun getLastLaunchTime(appId: String): Long {
+        return prefs.getLong(LAST_LAUNCH_PREFIX + appId, 0L)
+    }
+
+    fun setLastLaunchTime(appId: String, time: Long) {
+        prefs.edit().putLong(LAST_LAUNCH_PREFIX + appId, time).apply()
     }
 }

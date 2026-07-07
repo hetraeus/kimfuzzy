@@ -168,7 +168,7 @@ class MainActivity : AppCompatActivity() {
         val bg = ThemeUtils.getBackgroundColor()
         val text = ThemeUtils.getTextColor()
         val textSecondary = ThemeUtils.getSecondaryTextColor()
-        val accent = Prefs.getAccentColor()
+        val accent = ThemeUtils.getAccentColor(this)
 
         binding.root.setBackgroundColor(bg)
         binding.topBar.setBackgroundColor(bg)
@@ -315,7 +315,7 @@ class MainActivity : AppCompatActivity() {
     }
     private fun calculateSpanCount(): Int = 5
     private fun setupGridTouchListener() {
-        val swipeThreshold = 150f * resources.displayMetrics.density
+        val swipeThreshold = 100f * resources.displayMetrics.density
         val clickSlop = 20f * resources.displayMetrics.density
 
         binding.bookmarksGrid.addOnItemTouchListener(object : RecyclerView.OnItemTouchListener {
@@ -752,9 +752,21 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        val now = System.currentTimeMillis()
         val scored = allApps.map { app ->
-            val score = FzfScorer.score(query, app.displayName)
-            app to score
+            val base = FzfScorer.score(query, app.displayName)
+            // frecency: boost if launched within last 7 days
+            val lastLaunch = Prefs.getLastLaunchTime(app.id)
+            val recencyBonus = if (lastLaunch > 0) {
+                val hoursSince = (now - lastLaunch) / (60 * 60 * 1000)
+                when {
+                    hoursSince < 24 -> 500   // launched today
+                    hoursSince < 168 -> 200  // within a week
+                    else -> 0
+                }
+            } else 0
+            val total = base + recencyBonus
+            app to total
         }.filter { it.second > 0 }
             .sortedWith(
                 compareByDescending<Pair<AppInfo, Int>> { it.second }
@@ -767,6 +779,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun launchApp(app: AppInfo) {
+        Prefs.setLastLaunchTime(app.id, System.currentTimeMillis())
         if (app.shortcutId != null) {
             val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
             try {
@@ -899,18 +912,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun showSettingsDialog() {
         val editMode = Prefs.getEditMode()
-        val editLabel = if (editMode) "💮 Bookmarks locked" else "✏️ Edit bookmarks"
-        val options = arrayOf("Theme", "Accent Color", "Icon Size", "Icon Pack", editLabel, "Set as Default Launcher")
+        val editLabel = if (editMode) "💮 Lock bookmarks" else "✏️ Edit bookmarks"
+        val options = arrayOf("Theme", "Icon Size", "Icon Pack", editLabel, "Set as Default Launcher")
 
         AlertDialog.Builder(this)
             .setTitle("Settings")
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> showThemePicker()
-                    1 -> showAccentPicker()
-                    2 -> showIconSizePicker()
-                    3 -> showIconPackPicker()
-                    4 -> {
+                    1 -> showIconSizePicker()
+                    2 -> showIconPackPicker()
+                    3 -> {
                         Prefs.setEditMode(!editMode)
                         Toast.makeText(
                             this,
@@ -941,28 +953,6 @@ class MainActivity : AppCompatActivity() {
                 dialog.dismiss()
             }
             .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun showAccentPicker() {
-        val colors = intArrayOf(
-            Color.parseColor("#FF4081"),
-            Color.parseColor("#2196F3"),
-            Color.parseColor("#4CAF50"),
-            Color.parseColor("#FF9800"),
-            Color.parseColor("#9C27B0"),
-            Color.parseColor("#F44336"),
-            Color.parseColor("#00BCD4"),
-            Color.parseColor("#FFEB3B"),
-        )
-        val names = arrayOf("Pink", "Blue", "Green", "Orange", "Purple", "Red", "Cyan", "Yellow")
-
-        AlertDialog.Builder(this)
-            .setTitle("Accent Color")
-            .setItems(names) { _, which ->
-                Prefs.setAccentColor(colors[which])
-                recreate()
-            }
             .show()
     }
 

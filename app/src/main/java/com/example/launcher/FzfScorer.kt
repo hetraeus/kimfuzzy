@@ -19,66 +19,57 @@ object FzfScorer {
 
         return scoreSingle(q, t)
     }
+  private fun scoreSingle(query: String, text: String): Int {
+    var bestScore = 0
+    for (start in text.indices) {
+        if (text[start] != query.getOrNull(0)) continue
 
-    private fun scoreSingle(query: String, text: String): Int {
-        var bestScore = 0
+        var score = 0
+        var qIdx = 0
+        var lastMatch = -1
+        var consecutive = 0
+        var firstMatchPos = -1
 
-        // Try matching from each occurrence of the first query char
-        for (start in text.indices) {
-            if (text[start] != query.getOrNull(0)) continue
+        for (i in start..<text.length) {
+            if (qIdx < query.length && text[i] == query[qIdx]) {
+                score += 10
 
-            var score = 0
-            var qIdx = 0
-            var lastMatch = -1
-            var consecutive = 0
-            var firstMatchPos = -1
-
-            for (i in start..<text.length) {
-                if (qIdx < query.length && text[i] == query[qIdx]) {
-                    score += 10
-
-                    if (lastMatch != -1 && i == lastMatch + 1) {
-                        consecutive++
-                        score += consecutive * 5
-                    } else {
-                        consecutive = 0
-                    }
-
-                    val isWordBoundary = i == 0 || 
-                        text[i - 1] == ' ' || text[i - 1] == '-' || text[i - 1] == '_' || text[i - 1] == '/' || text[i - 1] == '\t'
-
-                    if (qIdx == 0) {
-                        // First char of query: huge bonus for word boundary
-                        if (isWordBoundary) {
-                            score += 100
-                        }
-                    } else if (isWordBoundary) {
-                        score += 15
-                    }
-
-                    if (firstMatchPos == -1) {
-                        firstMatchPos = i
-                    }
-
-                    if (lastMatch != -1) {
-                        score -= (i - lastMatch - 1) * 3
-                    }
-
-                    lastMatch = i
-                    qIdx++
+                if (lastMatch != -1 && i == lastMatch + 1) {
+                    consecutive++
+                    score += consecutive * 10   // increased from 5
+                } else {
+                    consecutive = 0
                 }
-            }
 
-            // Bonus for earlier first match
-            if (firstMatchPos >= 0) {
-                score -= firstMatchPos
-            }
+                val isWordBoundary = i == 0 ||
+                    text[i - 1] == ' ' || text[i - 1] == '-' || text[i - 1] == '_' || text[i - 1] == '/' || text[i - 1] == '\t'
 
-            if (qIdx >= query.length && score > bestScore) {
-                bestScore = score
+                if (qIdx == 0) {
+                    if (isWordBoundary) score += 100
+                    if (i == 0) score += 200    // bonus for matching at the very start
+                } else if (isWordBoundary) {
+                    score += 15
+                }
+
+                if (firstMatchPos == -1) firstMatchPos = i
+
+                if (lastMatch != -1) {
+                    score -= (i - lastMatch - 1) * 5   // increased from 3
+                }
+
+                lastMatch = i
+                qIdx++
             }
         }
 
-        return bestScore
+        if (firstMatchPos >= 0) {
+            score -= firstMatchPos
+        }
+
+        if (qIdx >= query.length && score > bestScore) {
+            bestScore = score
+        }
     }
+    return bestScore
+  }
 }

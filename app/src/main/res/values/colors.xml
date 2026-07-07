@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="accent_default">#FF4081</color>
     <color name="light_bg">#FAFAFA</color>
     <color name="light_text">#212121</color>
     <color name="light_text_secondary">#757575</color>

@@ -88,13 +88,16 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:padding="8dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
         android:visibility="gone">
 
         <ImageButton
             android:id="@+id/clearBtn"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_close"
             android:visibility="gone"
@@ -105,7 +108,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:padding="12dp"
+            android:padding="8dp"
             android:hint="Search apps..."
             android:gravity="center"
             android:textAlignment="center"
@@ -115,8 +118,8 @@
 
         <TextView
             android:id="@+id/playBtn"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:text="▷"
             android:textSize="24sp"
