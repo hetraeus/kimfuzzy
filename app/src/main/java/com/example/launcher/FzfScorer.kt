@@ -19,8 +19,9 @@ object FzfScorer {
 
         return scoreSingle(q, t)
     }
-  private fun scoreSingle(query: String, text: String): Int {
+    private fun scoreSingle(query: String, text: String): Int {
     var bestScore = 0
+
     for (start in text.indices) {
         if (text[start] != query.getOrNull(0)) continue
 
@@ -36,7 +37,7 @@ object FzfScorer {
 
                 if (lastMatch != -1 && i == lastMatch + 1) {
                     consecutive++
-                    score += consecutive * 10   // increased from 5
+                    score += consecutive * 10
                 } else {
                     consecutive = 0
                 }
@@ -46,7 +47,7 @@ object FzfScorer {
 
                 if (qIdx == 0) {
                     if (isWordBoundary) score += 100
-                    if (i == 0) score += 200    // bonus for matching at the very start
+                    if (i == 0) score += 200
                 } else if (isWordBoundary) {
                     score += 15
                 }
@@ -54,7 +55,7 @@ object FzfScorer {
                 if (firstMatchPos == -1) firstMatchPos = i
 
                 if (lastMatch != -1) {
-                    score -= (i - lastMatch - 1) * 5   // increased from 3
+                    score -= (i - lastMatch - 1) * 5
                 }
 
                 lastMatch = i
@@ -70,6 +71,16 @@ object FzfScorer {
             bestScore = score
         }
     }
+
+    if (bestScore > 0) {
+        if (text.startsWith(query, ignoreCase = true)) {
+            bestScore += 500
+        }
+        if (text.equals(query, ignoreCase = true)) {
+            bestScore += 1000
+        }
+    }
+
     return bestScore
-  }
+}
 }

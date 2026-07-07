@@ -40,6 +40,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 class MainActivity : AppCompatActivity() {
 
@@ -335,25 +336,28 @@ class MainActivity : AppCompatActivity() {
                 val editMode = Prefs.getEditMode()
 
                 when (e.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
+                  MotionEvent.ACTION_DOWN -> {
                         startX = e.x
                         startY = e.y
                         downTime = System.currentTimeMillis()
                         hasMoved = false
 
-                        if (editMode) {
-                            val child = rv.findChildViewUnder(e.x, e.y)
-                            if (child != null) {
-                                val position = rv.getChildAdapterPosition(child)
-                                val app = bookmarkAdapter.getItemAt(position)
-                                if (app != null) {
+                        val child = rv.findChildViewUnder(e.x, e.y)
+                        if (child != null) {
+                            val position = rv.getChildAdapterPosition(child)
+                            val app = bookmarkAdapter.getItemAt(position)
+                            if (app != null) {
+                                // Only schedule the popup if we are NOT in edit mode
+                                if (!Prefs.getEditMode()) {
                                     dialogRunnable = Runnable {
-                                        if (!hasMoved) {
+                                        // Double-check that edit mode hasn't been enabled in the meantime
+                                        if (!Prefs.getEditMode() && !hasMoved) {
                                             showBookmarkOptions(app)
                                         }
                                     }
                                     touchHandler.postDelayed(dialogRunnable!!, 1400)
                                 }
+                                // If in edit mode, do nothing – the drag will be handled by the OnTouchListener
                             }
                         }
                         return false
@@ -752,27 +756,16 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val now = System.currentTimeMillis()
         val scored = allApps.map { app ->
             val base = FzfScorer.score(query, app.displayName)
-            // frecency: boost if launched within last 7 days
             val lastLaunch = Prefs.getLastLaunchTime(app.id)
-            val recencyBonus = if (lastLaunch > 0) {
-                val hoursSince = (now - lastLaunch) / (60 * 60 * 1000)
-                when {
-                    hoursSince < 24 -> 500   // launched today
-                    hoursSince < 168 -> 200  // within a week
-                    else -> 0
-                }
-            } else 0
-            val total = base + recencyBonus
-            app to total
-        }.filter { it.second > 0 }
-            .sortedWith(
-                compareByDescending<Pair<AppInfo, Int>> { it.second }
-                    .thenBy { it.first.displayName.lowercase() }
-            )
-            .map { it.first }
+            Triple(app, base, lastLaunch)
+        }.filter { it.second > 0 }   // only apps with positive relevance
+        .sortedWith(
+            compareByDescending<Triple<AppInfo, Int, Long>> { it.second }  // base score first
+                .thenByDescending { it.third }                             // then recency
+        )
+        .map { it.first }
 
         appAdapter.submitList(scored)
         binding.emptyState.visibility = if (scored.isEmpty()) View.VISIBLE else View.GONE
@@ -805,7 +798,7 @@ class MainActivity : AppCompatActivity() {
             "App info"
         )
 
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle(app.label)
             .setItems(options) { _, which ->
                 when (which) {
@@ -830,9 +823,13 @@ class MainActivity : AppCompatActivity() {
         val input = EditText(this).apply {
             setText(app.label)
             selectAll()
+            setTextColor(ThemeUtils.getTextColor())
+            setHintTextColor(ThemeUtils.getSecondaryTextColor())
+            setBackgroundColor(Color.TRANSPARENT)
+            setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
         }
 
-        AlertDialog.Builder(this)
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle("Set bookmark label")
             .setView(input)
             .setPositiveButton("Add") { _, _ ->
@@ -843,28 +840,25 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("Cancel", null)
             .show()
-    }
 
-    private fun showBookmarkOptions(app: AppInfo) {
-        val options = arrayOf("Rename bookmark", "Hide bookmark")
-        AlertDialog.Builder(this)
-            .setTitle(app.label.ifEmpty { "Bookmark" })
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> renameBookmark(app)
-                    1 -> hideBookmark(app)
-                }
-            }
-            .show()
+        dialog.setOnShowListener {
+            input.postDelayed({
+                showKeyboardForEditText(input)
+            }, 100)
+        }
     }
 
     private fun renameBookmark(app: AppInfo) {
         val input = EditText(this).apply {
             setText(app.label)
             selectAll()
+            setTextColor(ThemeUtils.getTextColor())
+            setHintTextColor(ThemeUtils.getSecondaryTextColor())
+            setBackgroundColor(Color.TRANSPARENT)
+            setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
         }
 
-        AlertDialog.Builder(this)
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle("Rename bookmark")
             .setView(input)
             .setPositiveButton("Save") { _, _ ->
@@ -874,20 +868,25 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("Cancel", null)
             .show()
-    }
 
-    private fun hideBookmark(app: AppInfo) {
-        Prefs.removeBookmark(app.id)
-        loadBookmarks()
+        dialog.setOnShowListener {
+            input.postDelayed({
+                showKeyboardForEditText(input)
+            }, 100)
+        }
     }
 
     private fun editPrefix(app: AppInfo) {
         val input = EditText(this).apply {
             setText(app.prefix)
             hint = "e.g., LLM AI"
+            setTextColor(ThemeUtils.getTextColor())
+            setHintTextColor(ThemeUtils.getSecondaryTextColor())
+            setBackgroundColor(Color.TRANSPARENT)
+            setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
         }
 
-        AlertDialog.Builder(this)
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle("Edit prefix for ${app.label}")
             .setView(input)
             .setPositiveButton("Save") { _, _ ->
@@ -901,7 +900,33 @@ class MainActivity : AppCompatActivity() {
             }
             .setNeutralButton("Cancel", null)
             .show()
+
+        dialog.setOnShowListener {
+            input.postDelayed({
+                showKeyboardForEditText(input)
+            }, 100)
+        }
     }
+
+    private fun showBookmarkOptions(app: AppInfo) {
+        val options = arrayOf("Rename bookmark", "Hide bookmark")
+        MaterialAlertDialogBuilder(this)
+            .setTitle(app.label.ifEmpty { "Bookmark" })
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> renameBookmark(app)
+                    1 -> hideBookmark(app)
+                }
+            }
+            .show()
+    }
+
+
+    private fun hideBookmark(app: AppInfo) {
+        Prefs.removeBookmark(app.id)
+        loadBookmarks()
+    }
+
 
     private fun showAppInfo(app: AppInfo) {
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -915,7 +940,7 @@ class MainActivity : AppCompatActivity() {
         val editLabel = if (editMode) "💮 Lock bookmarks" else "✏️ Edit bookmarks"
         val options = arrayOf("Theme", "Icon Size", "Icon Pack", editLabel, "Set as Default Launcher")
 
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle("Settings")
             .setItems(options) { _, which ->
                 when (which) {
@@ -930,7 +955,7 @@ class MainActivity : AppCompatActivity() {
                             Toast.LENGTH_SHORT
                         ).show()
                     }
-                    5 -> promptSetDefaultLauncher()
+                    4 -> promptSetDefaultLauncher()
                 }
             }
             .setNegativeButton("Close", null)
@@ -942,7 +967,7 @@ class MainActivity : AppCompatActivity() {
         val current = Prefs.getTheme()
         val currentIndex = themes.indexOfFirst { it.lowercase() == current }
 
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle("Theme")
             .setSingleChoiceItems(themes, currentIndex) { dialog, which ->
                 val selected = themes[which].lowercase()
@@ -961,7 +986,7 @@ class MainActivity : AppCompatActivity() {
         val current = Prefs.getIconSize()
         val currentIndex = sizes.indexOfFirst { it.lowercase() == current }
 
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle("Icon Size")
             .setSingleChoiceItems(sizes, currentIndex) { dialog, which ->
                 val selected = sizes[which].lowercase()
@@ -982,7 +1007,7 @@ class MainActivity : AppCompatActivity() {
 
         val labels = packs.map { it.second }.toTypedArray()
 
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle("Icon Pack")
             .setSingleChoiceItems(labels, currentIndex) { dialog, which ->
                 val selected = packs[which].first
@@ -1002,7 +1027,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun promptSetDefaultLauncher() {
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle("Set as default launcher?")
             .setMessage("This app needs to be your default launcher.")
             .setPositiveButton("Set") { _, _ ->
@@ -1021,6 +1046,12 @@ class MainActivity : AppCompatActivity() {
         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         imm.hideSoftInputFromWindow(binding.filter.windowToken, 0)
     }
+    private fun showKeyboardForEditText(editText: EditText) {
+        editText.requestFocus()
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.showSoftInput(editText, InputMethodManager.SHOW_IMPLICIT)
+    }
+    private fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
