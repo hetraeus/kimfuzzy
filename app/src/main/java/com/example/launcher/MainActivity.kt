@@ -926,7 +926,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showThemePicker() {
-        val themes = arrayOf("Light", "Dark", "OLED", "Sepia")
+        val themes = arrayOf("Light", "Dark", "Sepia")
         val current = Prefs.getTheme()
         val currentIndex = themes.indexOfFirst { it.lowercase() == current }
 

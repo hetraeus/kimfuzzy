@@ -30,7 +30,7 @@ object IconSize {
         if (iconPack.isNotBlank() && icon != null && fromPack) {
             val theme = Prefs.getTheme()
             val iconTint = when (theme) {
-                "dark", "oled" -> Color.WHITE
+                "dark" -> Color.WHITE
                 else -> Color.BLACK
             }
 
@@ -41,7 +41,7 @@ object IconSize {
 
             val bgColor = when (theme) {
                 "light" -> Color.WHITE
-                "dark", "oled" -> Color.BLACK
+                "dark" -> Color.BLACK
                 "sepia" -> Color.parseColor("#F4ECD8")
                 else -> Color.WHITE
             }

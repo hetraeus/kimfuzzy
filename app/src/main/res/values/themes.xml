@@ -16,14 +16,6 @@
     </style>
 
     <style name="Theme.Launcher.Dark" parent="Theme.Launcher">
-        <item name="android:windowBackground">@color/dark_bg</item>
-        <item name="android:textColorPrimary">@color/dark_text</item>
-        <item name="android:textColorSecondary">@color/dark_text_secondary</item>
-        <item name="colorPrimary">@color/accent_default</item>
-        <item name="colorPrimaryVariant">@color/accent_default</item>
-    </style>
-
-    <style name="Theme.Launcher.OLED" parent="Theme.Launcher">
         <item name="android:windowBackground">@android:color/black</item>
         <item name="android:textColorPrimary">@color/dark_text</item>
         <item name="android:textColorSecondary">@color/dark_text_secondary</item>

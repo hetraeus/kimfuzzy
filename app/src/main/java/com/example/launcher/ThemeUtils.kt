@@ -9,7 +9,6 @@ object ThemeUtils {
         val themeId = when (theme) {
             "light" -> R.style.Theme_Launcher_Light
             "dark" -> R.style.Theme_Launcher_Dark
-            "oled" -> R.style.Theme_Launcher_OLED
             "sepia" -> R.style.Theme_Launcher_Sepia
             else -> R.style.Theme_Launcher_Light
         }
@@ -19,8 +18,7 @@ object ThemeUtils {
     fun getBackgroundColor(): Int {
         return when (Prefs.getTheme()) {
             "light" -> Color.parseColor("#FAFAFA")
-            "dark" -> Color.parseColor("#121212")
-            "oled" -> Color.BLACK
+            "dark" -> Color.BLACK
             "sepia" -> Color.parseColor("#F4ECD8")
             else -> Color.parseColor("#FAFAFA")
         }
@@ -29,7 +27,7 @@ object ThemeUtils {
     fun getTextColor(): Int {
         return when (Prefs.getTheme()) {
             "light" -> Color.parseColor("#212121")
-            "dark", "oled" -> Color.parseColor("#EEEEEE")
+            "dark" -> Color.parseColor("#EEEEEE")
             "sepia" -> Color.parseColor("#3E2B1F")
             else -> Color.parseColor("#212121")
         }
@@ -38,7 +36,7 @@ object ThemeUtils {
     fun getSecondaryTextColor(): Int {
         return when (Prefs.getTheme()) {
             "light" -> Color.parseColor("#757575")
-            "dark", "oled" -> Color.parseColor("#BDBDBD")
+            "dark" -> Color.parseColor("#BDBDBD")
             "sepia" -> Color.parseColor("#5B4636")
             else -> Color.parseColor("#757575")
         }
