@@ -19,6 +19,7 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.MotionEvent
 import android.view.View
+import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.Toast
@@ -316,7 +317,7 @@ class MainActivity : AppCompatActivity() {
     }
     private fun calculateSpanCount(): Int = 5
     private fun setupGridTouchListener() {
-        val swipeThreshold = 100f * resources.displayMetrics.density
+        val swipeThreshold = 60f * resources.displayMetrics.density
         val clickSlop = 20f * resources.displayMetrics.density
 
         binding.bookmarksGrid.addOnItemTouchListener(object : RecyclerView.OnItemTouchListener {
@@ -347,17 +348,14 @@ class MainActivity : AppCompatActivity() {
                             val position = rv.getChildAdapterPosition(child)
                             val app = bookmarkAdapter.getItemAt(position)
                             if (app != null) {
-                                // Only schedule the popup if we are NOT in edit mode
                                 if (!Prefs.getEditMode()) {
                                     dialogRunnable = Runnable {
-                                        // Double-check that edit mode hasn't been enabled in the meantime
                                         if (!Prefs.getEditMode() && !hasMoved) {
                                             showBookmarkOptions(app)
                                         }
                                     }
                                     touchHandler.postDelayed(dialogRunnable!!, 1400)
                                 }
-                                // If in edit mode, do nothing – the drag will be handled by the OnTouchListener
                             }
                         }
                         return false
@@ -757,13 +755,15 @@ class MainActivity : AppCompatActivity() {
         }
 
         val scored = allApps.map { app ->
-            val base = FzfScorer.score(query, app.displayName)
+            val displayScore = FzfScorer.score(query, app.displayName)
+            val labelScore = FzfScorer.score(query, app.label)
+            val base = maxOf(displayScore, labelScore)
             val lastLaunch = Prefs.getLastLaunchTime(app.id)
             Triple(app, base, lastLaunch)
-        }.filter { it.second > 0 }   // only apps with positive relevance
+        }.filter { it.second > 0 }
         .sortedWith(
-            compareByDescending<Triple<AppInfo, Int, Long>> { it.second }  // base score first
-                .thenByDescending { it.third }                             // then recency
+            compareByDescending<Triple<AppInfo, Int, Long>> { it.second }
+                .thenByDescending { it.third }
         )
         .map { it.first }
 
@@ -839,13 +839,14 @@ class MainActivity : AppCompatActivity() {
                 loadBookmarks()
             }
             .setNegativeButton("Cancel", null)
-            .show()
+            .create()
 
         dialog.setOnShowListener {
-            input.postDelayed({
-                showKeyboardForEditText(input)
-            }, 100)
+            input.requestFocus()
+            dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
         }
+
+        dialog.show()
     }
 
     private fun renameBookmark(app: AppInfo) {
@@ -867,13 +868,14 @@ class MainActivity : AppCompatActivity() {
                 loadApps()
             }
             .setNegativeButton("Cancel", null)
-            .show()
+            .create()
 
         dialog.setOnShowListener {
-            input.postDelayed({
-                showKeyboardForEditText(input)
-            }, 100)
+            input.requestFocus()
+            dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
         }
+
+        dialog.show()
     }
 
     private fun editPrefix(app: AppInfo) {
@@ -899,13 +901,14 @@ class MainActivity : AppCompatActivity() {
                 loadApps()
             }
             .setNeutralButton("Cancel", null)
-            .show()
+            .create()
 
         dialog.setOnShowListener {
-            input.postDelayed({
-                showKeyboardForEditText(input)
-            }, 100)
+            input.requestFocus()
+            dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
         }
+
+        dialog.show()
     }
 
     private fun showBookmarkOptions(app: AppInfo) {
