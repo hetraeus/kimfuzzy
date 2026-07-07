@@ -272,8 +272,7 @@ class MainActivity : AppCompatActivity() {
             }
             adapter = bookmarkAdapter
         }
-
-        itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+                itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
             ItemTouchHelper.UP or ItemTouchHelper.DOWN or ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT,
             0
         ) {
@@ -285,6 +284,7 @@ class MainActivity : AppCompatActivity() {
             ): Int {
                 if (!Prefs.getEditMode()) return makeMovementFlags(0, 0)
                 val position = viewHolder.bindingAdapterPosition
+                if (position == RecyclerView.NO_POSITION) return makeMovementFlags(0, 0)
                 val item = bookmarkAdapter.getItemAt(position)
                 if (item == null) {
                     return makeMovementFlags(0, 0)
@@ -300,6 +300,7 @@ class MainActivity : AppCompatActivity() {
             ): Boolean {
                 val fromPos = viewHolder.bindingAdapterPosition
                 val toPos = target.bindingAdapterPosition
+                if (fromPos == RecyclerView.NO_POSITION || toPos == RecyclerView.NO_POSITION) return false
                 bookmarkAdapter.moveItem(fromPos, toPos)
                 return true
             }
@@ -310,6 +311,7 @@ class MainActivity : AppCompatActivity() {
                 super.clearView(recyclerView, viewHolder)
                 val newOrder = bookmarkAdapter.getItems()
                     .map { it?.id ?: "" }
+                // ← removed compaction; empty strings preserve grid positions
                 Prefs.saveBookmarks(newOrder)
             }
         })
@@ -729,14 +731,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadBookmarks() {
-        val bookmarked = Prefs.getBookmarks()
+        val bookmarked = Prefs.getBookmarks()  // ← removed .filter { it.isNotEmpty() }
         val maxSlots = calculateSpanCount() * 7 // 5×7 = 35
         val appsMap = allApps.associateBy { it.id }
 
         val grid = MutableList<AppInfo?>(maxSlots) { null }
 
         bookmarked.forEachIndexed { index, id ->
-            if (id.isNotEmpty() && index < maxSlots) {
+            if (index < maxSlots && id.isNotEmpty()) {
                 appsMap[id]?.let { app ->
                     val customLabel = Prefs.getCustomLabel(app.id)
                     grid[index] = if (customLabel != null) app.copy(label = customLabel) else app
