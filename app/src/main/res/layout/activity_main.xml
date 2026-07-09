@@ -39,12 +39,13 @@
             android:layout_marginEnd="12dp"
             android:textSize="14sp" />
 
-        <ImageButton
+        <TextView
             android:id="@+id/settingsBtn"
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_settings"
+            android:gravity="center"
+            android:textSize="20sp"
             android:contentDescription="Settings" />
     </LinearLayout>
 

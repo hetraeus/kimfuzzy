@@ -10,43 +10,38 @@
         <item name="android:windowBackground">@color/light_bg</item>
         <item name="android:textColorPrimary">@color/light_text</item>
         <item name="android:textColorSecondary">@color/light_text_secondary</item>
-        <item name="android:alertDialogTheme">@style/AlertDialogTheme.Light</item>
         <item name="colorSurface">@color/light_bg</item>
         <item name="colorOnSurface">@color/light_text</item>
+        <item name="colorOnSurfaceVariant">@color/light_text_secondary</item>
+        <item name="colorSurfaceContainer">@color/light_bg</item>
+        <item name="colorSurfaceContainerLow">@color/light_bg</item>
+        <item name="colorSurfaceContainerHigh">@color/light_bg</item>
+        <item name="colorPrimary">#FF4081</item>
     </style>
 
     <style name="Theme.Launcher.Dark" parent="Theme.Launcher">
         <item name="android:windowBackground">@android:color/black</item>
         <item name="android:textColorPrimary">@color/dark_text</item>
         <item name="android:textColorSecondary">@color/dark_text_secondary</item>
-        <item name="android:alertDialogTheme">@style/AlertDialogTheme.Dark</item>
         <item name="colorSurface">@android:color/black</item>
         <item name="colorOnSurface">@color/dark_text</item>
+        <item name="colorOnSurfaceVariant">@color/dark_text_secondary</item>
+        <item name="colorSurfaceContainer">@android:color/black</item>
+        <item name="colorSurfaceContainerLow">@android:color/black</item>
+        <item name="colorSurfaceContainerHigh">@android:color/black</item>
+        <item name="colorPrimary">#FF4081</item>
     </style>
 
     <style name="Theme.Launcher.Sepia" parent="Theme.Launcher">
         <item name="android:windowBackground">@color/sepia_bg</item>
         <item name="android:textColorPrimary">@color/sepia_text</item>
         <item name="android:textColorSecondary">@color/sepia_text_secondary</item>
-        <item name="android:alertDialogTheme">@style/AlertDialogTheme.Sepia</item>
         <item name="colorSurface">@color/sepia_bg</item>
         <item name="colorOnSurface">@color/sepia_text</item>
-    </style>
-    <style name="AlertDialogTheme.Light" parent="Theme.AppCompat.Light.Dialog.Alert">
-      <item name="android:background">@color/light_bg</item>
-      <item name="android:textColorPrimary">@color/light_text</item>
-      <item name="android:textColorSecondary">@color/light_text_secondary</item>
-    </style>
-
-    <style name="AlertDialogTheme.Dark" parent="Theme.AppCompat.Dialog.Alert">
-      <item name="android:background">@android:color/black</item>
-      <item name="android:textColorPrimary">@color/dark_text</item>
-      <item name="android:textColorSecondary">@color/dark_text_secondary</item>
-    </style>
-
-    <style name="AlertDialogTheme.Sepia" parent="Theme.AppCompat.Light.Dialog.Alert">
-      <item name="android:background">@color/sepia_bg</item>
-      <item name="android:textColorPrimary">@color/sepia_text</item>
-      <item name="android:textColorSecondary">@color/sepia_text_secondary</item>
+        <item name="colorOnSurfaceVariant">@color/sepia_text_secondary</item>
+        <item name="colorSurfaceContainer">@color/sepia_bg</item>
+        <item name="colorSurfaceContainerLow">@color/sepia_bg</item>
+        <item name="colorSurfaceContainerHigh">@color/sepia_bg</item>
+        <item name="colorPrimary">#FF4081</item>
     </style>
 </resources>

@@ -22,6 +22,7 @@ import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -30,10 +31,10 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.launcher.databinding.ActivityMainBinding
+import com.example.launcher.databinding.ItemBookmarkBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -48,12 +49,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var appAdapter: AppAdapter
     private lateinit var bookmarkAdapter: BookmarkAdapter
-    private lateinit var itemTouchHelper: ItemTouchHelper
     private val handler = Handler(Looper.getMainLooper())
     private val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     private val dateFormat = SimpleDateFormat("d MMMM", Locale.getDefault())
     private var allApps = listOf<AppInfo>()
     private var isKeyboardVisible = false
+
+    // Custom drag state
+    private var floatingView: View? = null
+    private var dragTouchOffsetX = 0f
+    private var dragTouchOffsetY = 0f
+    private var dragSourcePos = -1
 
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -183,9 +189,15 @@ class MainActivity : AppCompatActivity() {
         binding.filter.setTextColor(text)
         binding.filter.setHintTextColor(textSecondary)
 
-        binding.settingsBtn.setColorFilter(accent)
+        binding.settingsBtn.setTextColor(accent)
         binding.clearBtn.setColorFilter(accent)
         binding.playBtn.setTextColor(accent)
+
+        updateEditModeIcon()
+    }
+
+    private fun updateEditModeIcon() {
+        binding.settingsBtn.text = if (Prefs.getEditMode()) "✏️" else "𑁍"
     }
 
     private fun setupTopBar() {
@@ -257,13 +269,89 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val bookmarkDragListener = object : BookmarkAdapter.DragListener {
+        override fun onDragStart(
+            holder: BookmarkAdapter.ViewHolder,
+            app: AppInfo,
+            touchX: Float,
+            touchY: Float
+        ) {
+            dragSourcePos = holder.bindingAdapterPosition
+            if (dragSourcePos == RecyclerView.NO_POSITION) return
+
+            dragTouchOffsetX = touchX
+            dragTouchOffsetY = touchY
+
+            val floatBinding = ItemBookmarkBinding.inflate(layoutInflater)
+            floatBinding.name.text = app.label
+            floatBinding.name.setTextColor(ThemeUtils.getTextColor())
+            IconSize.apply(floatBinding.icon, app.icon, app.iconFromPack)
+
+            val view = floatBinding.root
+            view.measure(
+                View.MeasureSpec.makeMeasureSpec(holder.binding.root.width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(holder.binding.root.height, View.MeasureSpec.EXACTLY)
+            )
+            view.layout(0, 0, view.measuredWidth, view.measuredHeight)
+
+            val loc = IntArray(2)
+            holder.binding.root.getLocationOnScreen(loc)
+
+            val contentLoc = IntArray(2)
+            binding.contentArea.getLocationOnScreen(contentLoc)
+
+            val params = FrameLayout.LayoutParams(view.measuredWidth, view.measuredHeight)
+            params.leftMargin = loc[0] - contentLoc[0]
+            params.topMargin = loc[1] - contentLoc[1]
+
+            binding.contentArea.addView(view, params)
+            floatingView = view
+
+            holder.binding.root.visibility = View.INVISIBLE
+        }
+
+        override fun onDragMove(rawX: Float, rawY: Float) {
+            val view = floatingView ?: return
+            val contentLoc = IntArray(2)
+            binding.contentArea.getLocationOnScreen(contentLoc)
+
+            val params = view.layoutParams as FrameLayout.LayoutParams
+            params.leftMargin = (rawX - dragTouchOffsetX - contentLoc[0]).toInt()
+            params.topMargin = (rawY - dragTouchOffsetY - contentLoc[1]).toInt()
+            view.layoutParams = params
+        }
+
+        override fun onDragEnd(rawX: Float, rawY: Float) {
+            floatingView?.let { binding.contentArea.removeView(it) }
+            floatingView = null
+
+            val rvLoc = IntArray(2)
+            binding.bookmarksGrid.getLocationOnScreen(rvLoc)
+            val dropX = rawX - rvLoc[0]
+            val dropY = rawY - rvLoc[1]
+            val child = binding.bookmarksGrid.findChildViewUnder(dropX, dropY)
+            val targetPos = if (child != null) binding.bookmarksGrid.getChildAdapterPosition(child) else -1
+
+            if (targetPos != -1 && targetPos != dragSourcePos && dragSourcePos != -1) {
+                val mutable = bookmarkAdapter.getItems().toMutableList()
+                val temp = mutable[targetPos]
+                mutable[targetPos] = mutable[dragSourcePos]
+                mutable[dragSourcePos] = temp
+                bookmarkAdapter.submitList(mutable)
+                Prefs.saveBookmarks(mutable.map { it?.id ?: "" })
+            } else {
+                if (dragSourcePos != -1) bookmarkAdapter.notifyItemChanged(dragSourcePos)
+            }
+            dragSourcePos = -1
+        }
+    }
+
     private fun setupBookmarks() {
         bookmarkAdapter = BookmarkAdapter(
-            onStartDrag = { holder ->
-                if (Prefs.getEditMode()) {
-                    itemTouchHelper.startDrag(holder)
-                }
-            }
+            onEditTap = { app ->
+                showBookmarkOptions(app)
+            },
+            dragListener = if (Prefs.getEditMode()) bookmarkDragListener else null
         )
         binding.bookmarksGrid.apply {
             layoutManager = object : GridLayoutManager(this@MainActivity, calculateSpanCount()) {
@@ -272,52 +360,10 @@ class MainActivity : AppCompatActivity() {
             }
             adapter = bookmarkAdapter
         }
-                itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
-            ItemTouchHelper.UP or ItemTouchHelper.DOWN or ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT,
-            0
-        ) {
-            override fun isLongPressDragEnabled(): Boolean = false
-
-            override fun getMovementFlags(
-                recyclerView: RecyclerView,
-                viewHolder: RecyclerView.ViewHolder
-            ): Int {
-                if (!Prefs.getEditMode()) return makeMovementFlags(0, 0)
-                val position = viewHolder.bindingAdapterPosition
-                if (position == RecyclerView.NO_POSITION) return makeMovementFlags(0, 0)
-                val item = bookmarkAdapter.getItemAt(position)
-                if (item == null) {
-                    return makeMovementFlags(0, 0)
-                }
-                val dragFlags = ItemTouchHelper.UP or ItemTouchHelper.DOWN or ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT
-                return makeMovementFlags(dragFlags, 0)
-            }
-
-            override fun onMove(
-                recyclerView: RecyclerView,
-                viewHolder: RecyclerView.ViewHolder,
-                target: RecyclerView.ViewHolder
-            ): Boolean {
-                val fromPos = viewHolder.bindingAdapterPosition
-                val toPos = target.bindingAdapterPosition
-                if (fromPos == RecyclerView.NO_POSITION || toPos == RecyclerView.NO_POSITION) return false
-                bookmarkAdapter.moveItem(fromPos, toPos)
-                return true
-            }
-
-            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
-
-            override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
-                super.clearView(recyclerView, viewHolder)
-                val newOrder = bookmarkAdapter.getItems()
-                    .map { it?.id ?: "" }
-                // ← removed compaction; empty strings preserve grid positions
-                Prefs.saveBookmarks(newOrder)
-            }
-        })
-        itemTouchHelper.attachToRecyclerView(binding.bookmarksGrid)
     }
+
     private fun calculateSpanCount(): Int = 5
+
     private fun setupGridTouchListener() {
         val swipeThreshold = 60f * resources.displayMetrics.density
         val clickSlop = 20f * resources.displayMetrics.density
@@ -336,10 +382,11 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
-                val editMode = Prefs.getEditMode()
+                // In edit mode child views handle everything (drag + tap)
+                if (Prefs.getEditMode()) return false
 
                 when (e.actionMasked) {
-                  MotionEvent.ACTION_DOWN -> {
+                    MotionEvent.ACTION_DOWN -> {
                         startX = e.x
                         startY = e.y
                         downTime = System.currentTimeMillis()
@@ -350,14 +397,12 @@ class MainActivity : AppCompatActivity() {
                             val position = rv.getChildAdapterPosition(child)
                             val app = bookmarkAdapter.getItemAt(position)
                             if (app != null) {
-                                if (!Prefs.getEditMode()) {
-                                    dialogRunnable = Runnable {
-                                        if (!Prefs.getEditMode() && !hasMoved) {
-                                            showBookmarkOptions(app)
-                                        }
+                                dialogRunnable = Runnable {
+                                    if (!hasMoved) {
+                                        showBookmarkOptions(app)
                                     }
-                                    touchHandler.postDelayed(dialogRunnable!!, 1400)
                                 }
+                                touchHandler.postDelayed(dialogRunnable!!, 1400)
                             }
                         }
                         return false
@@ -372,20 +417,11 @@ class MainActivity : AppCompatActivity() {
                             cancelPending()
                         }
 
-                        if (!editMode) {
-                            if (dx > swipeThreshold && abs(dx) > abs(dy) * 2) {
-                                if (isTermuxInstalled()) {
-                                    cancelPending()
-                                    openTerminal()
-                                    return true
-                                }
-                            }
-
-                            if (dy > swipeThreshold && dy > abs(dx) * 2) {
-                                cancelPending()
-                                showFilter()
-                                return true
-                            }
+                        // Upward swipe opens filter (right-to-Termux removed)
+                        if (dy > swipeThreshold && dy > abs(dx) * 2) {
+                            cancelPending()
+                            showFilter()
+                            return true
                         }
 
                         return false
@@ -398,15 +434,13 @@ class MainActivity : AppCompatActivity() {
 
                         cancelPending()
 
-                        if (!editMode) {
-                            if (abs(dx) < clickSlop && abs(dy) < clickSlop && duration < 2000) {
-                                val child = rv.findChildViewUnder(e.x, e.y)
-                                if (child != null) {
-                                    val position = rv.getChildAdapterPosition(child)
-                                    val app = bookmarkAdapter.getItemAt(position)
-                                    if (app != null) {
-                                        launchApp(app)
-                                    }
+                        if (abs(dx) < clickSlop && abs(dy) < clickSlop && duration < 2000) {
+                            val child = rv.findChildViewUnder(e.x, e.y)
+                            if (child != null) {
+                                val position = rv.getChildAdapterPosition(child)
+                                val app = bookmarkAdapter.getItemAt(position)
+                                if (app != null) {
+                                    launchApp(app)
                                 }
                             }
                         }
@@ -425,24 +459,6 @@ class MainActivity : AppCompatActivity() {
             override fun onTouchEvent(rv: RecyclerView, e: MotionEvent) {}
             override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {}
         })
-    }
-
-    private fun isTermuxInstalled(): Boolean {
-        return try {
-            packageManager.getPackageInfo("com.termux", 0)
-            true
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    private fun openTerminal() {
-        val intent = Intent().apply {
-            setClassName("com.termux", "com.termux.app.TermuxActivity")
-        }
-        if (intent.resolveActivity(packageManager) != null) {
-            startActivity(intent)
-        }
     }
 
     private fun setupAppList() {
@@ -731,7 +747,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadBookmarks() {
-        val bookmarked = Prefs.getBookmarks()  // ← removed .filter { it.isNotEmpty() }
+        val bookmarked = Prefs.getBookmarks()
         val maxSlots = calculateSpanCount() * 7 // 5×7 = 35
         val appsMap = allApps.associateBy { it.id }
 
@@ -926,12 +942,10 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-
     private fun hideBookmark(app: AppInfo) {
         Prefs.removeBookmark(app.id)
         loadBookmarks()
     }
-
 
     private fun showAppInfo(app: AppInfo) {
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -954,6 +968,14 @@ class MainActivity : AppCompatActivity() {
                     2 -> showIconPackPicker()
                     3 -> {
                         Prefs.setEditMode(!editMode)
+                        updateEditModeIcon()
+                        // Rebind adapter so edit/lock touch listeners swap
+                        bookmarkAdapter = BookmarkAdapter(
+                            onEditTap = { app -> showBookmarkOptions(app) },
+                            dragListener = if (Prefs.getEditMode()) bookmarkDragListener else null
+                        )
+                        binding.bookmarksGrid.adapter = bookmarkAdapter
+                        loadBookmarks()
                         Toast.makeText(
                             this,
                             if (!editMode) "✏️ Edit mode enabled" else "💮 Locked mode enabled",

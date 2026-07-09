@@ -6,10 +6,18 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.example.launcher.databinding.ItemBookmarkBinding
+import kotlin.math.abs
 
 class BookmarkAdapter(
-    private val onStartDrag: ((RecyclerView.ViewHolder) -> Unit)? = null
+    private val onEditTap: ((AppInfo) -> Unit)? = null,
+    private val dragListener: DragListener? = null
 ) : RecyclerView.Adapter<BookmarkAdapter.ViewHolder>() {
+
+    interface DragListener {
+        fun onDragStart(holder: ViewHolder, app: AppInfo, touchX: Float, touchY: Float)
+        fun onDragMove(rawX: Float, rawY: Float)
+        fun onDragEnd(rawX: Float, rawY: Float)
+    }
 
     private var items: List<AppInfo?> = emptyList()
 
@@ -18,13 +26,9 @@ class BookmarkAdapter(
         notifyDataSetChanged()
     }
 
-    fun getItemAt(position: Int): AppInfo? {
-        return items.getOrNull(position)
-    }
+    fun getItemAt(position: Int): AppInfo? = items.getOrNull(position)
 
-    fun getItems(): List<AppInfo?> {
-        return items
-    }
+    fun getItems(): List<AppInfo?> = items
 
     fun moveItem(fromPos: Int, toPos: Int) {
         if (fromPos in items.indices && toPos in items.indices) {
@@ -60,28 +64,55 @@ class BookmarkAdapter(
             holder.binding.name.text = app.label
             holder.binding.name.setTextColor(ThemeUtils.getTextColor())
             IconSize.apply(holder.binding.icon, app.icon, app.iconFromPack)
-            holder.binding.root.isClickable = true
-            
-            onStartDrag?.let { startDrag ->
+
+            if (dragListener != null) {
+                // Edit mode: drag to move, tap (no movement) to open menu
+                val dragThreshold = 28f * holder.binding.root.context.resources.displayMetrics.density
                 var hasMoved = false
+                var startRawX = 0f
+                var startRawY = 0f
+
                 holder.binding.root.setOnTouchListener { _, event ->
                     when (event.actionMasked) {
                         MotionEvent.ACTION_DOWN -> {
                             hasMoved = false
-                            false
+                            startRawX = event.rawX
+                            startRawY = event.rawY
+                            true
                         }
                         MotionEvent.ACTION_MOVE -> {
-                            if (!hasMoved) {
+                            val dx = abs(event.rawX - startRawX)
+                            val dy = abs(event.rawY - startRawY)
+                            if (!hasMoved && (dx > dragThreshold || dy > dragThreshold)) {
                                 hasMoved = true
-                                startDrag(holder)
+                                val loc = IntArray(2)
+                                holder.binding.root.getLocationOnScreen(loc)
+                                dragListener.onDragStart(
+                                    holder, app,
+                                    touchX = startRawX - loc[0],
+                                    touchY = startRawY - loc[1]
+                                )
+                            } else if (hasMoved) {
+                                dragListener.onDragMove(event.rawX, event.rawY)
                             }
+                            true
+                        }
+                        MotionEvent.ACTION_UP -> {
+                            if (hasMoved) dragListener.onDragEnd(event.rawX, event.rawY)
+                            else onEditTap?.invoke(app)
+                            true
+                        }
+                        MotionEvent.ACTION_CANCEL -> {
+                            if (hasMoved) dragListener.onDragEnd(event.rawX, event.rawY)
                             true
                         }
                         else -> false
                     }
                 }
-            } ?: run {
+            } else {
+                // Lock mode: parent OnItemTouchListener handles tap / long-press / swipe
                 holder.binding.root.setOnTouchListener(null)
+                holder.binding.root.isClickable = false
             }
         }
     }
