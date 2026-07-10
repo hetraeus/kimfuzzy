@@ -60,6 +60,7 @@ class MainActivity : AppCompatActivity() {
     private var dragTouchOffsetX = 0f
     private var dragTouchOffsetY = 0f
     private var dragSourcePos = -1
+    private var draggedApp: AppInfo? = null
 
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -112,6 +113,21 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         unregisterReceiver(packageReceiver)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (Prefs.getEditMode()) {
+            Prefs.setEditMode(false)
+            updateEditModeIcon()
+            binding.dropZone.visibility = View.GONE
+            bookmarkAdapter = BookmarkAdapter(
+                onRename = { app -> renameBookmark(app) },
+                dragListener = null
+            )
+            binding.bookmarksGrid.adapter = bookmarkAdapter
+            loadBookmarks()
+        }
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -192,6 +208,11 @@ class MainActivity : AppCompatActivity() {
         binding.settingsBtn.setTextColor(accent)
         binding.clearBtn.setColorFilter(accent)
         binding.playBtn.setTextColor(accent)
+
+        // Drop zone styling
+        binding.dropZone.setTextColor(textSecondary)
+        binding.dropZone.setBackgroundColor(bg)
+        binding.dropZone.visibility = if (Prefs.getEditMode()) View.VISIBLE else View.GONE
 
         updateEditModeIcon()
     }
@@ -279,6 +300,7 @@ class MainActivity : AppCompatActivity() {
             dragSourcePos = holder.bindingAdapterPosition
             if (dragSourcePos == RecyclerView.NO_POSITION) return
 
+            draggedApp = app
             dragTouchOffsetX = touchX
             dragTouchOffsetY = touchY
 
@@ -325,6 +347,23 @@ class MainActivity : AppCompatActivity() {
             floatingView?.let { binding.contentArea.removeView(it) }
             floatingView = null
 
+            // Check if dropped in the hide zone (top area)
+            val dropZoneLoc = IntArray(2)
+            binding.dropZone.getLocationOnScreen(dropZoneLoc)
+            val dropZoneHeight = binding.dropZone.height
+            if (dropZoneHeight > 0 && rawY >= dropZoneLoc[1] && rawY <= dropZoneLoc[1] + dropZoneHeight) {
+                // Dropped in hide zone
+                if (dragSourcePos != -1 && draggedApp != null) {
+                    Prefs.removeBookmark(draggedApp!!.id)
+                    loadBookmarks()
+                    Toast.makeText(this@MainActivity, "Hidden: ${draggedApp!!.label}", Toast.LENGTH_SHORT).show()
+                }
+                dragSourcePos = -1
+                draggedApp = null
+                return
+            }
+
+            // Check if dropped on an empty grid cell -> move icon there
             val rvLoc = IntArray(2)
             binding.bookmarksGrid.getLocationOnScreen(rvLoc)
             val dropX = rawX - rvLoc[0]
@@ -334,23 +373,28 @@ class MainActivity : AppCompatActivity() {
 
             if (targetPos != -1 && targetPos != dragSourcePos && dragSourcePos != -1) {
                 val mutable = bookmarkAdapter.getItems().toMutableList()
-                val temp = mutable[targetPos]
-                mutable[targetPos] = mutable[dragSourcePos]
-                mutable[dragSourcePos] = temp
-                bookmarkAdapter.submitList(mutable)
-                Prefs.saveBookmarks(mutable.map { it?.id ?: "" })
+                if (mutable[targetPos] == null) {
+                    // Empty slot: move icon there
+                    mutable[targetPos] = mutable[dragSourcePos]
+                    mutable[dragSourcePos] = null
+                    bookmarkAdapter.submitList(mutable)
+                    Prefs.saveBookmarks(mutable.map { it?.id ?: "" })
+                } else {
+                    // Occupied slot: return to original
+                    bookmarkAdapter.notifyItemChanged(dragSourcePos)
+                }
             } else {
+                // Dropped outside grid: return to original
                 if (dragSourcePos != -1) bookmarkAdapter.notifyItemChanged(dragSourcePos)
             }
             dragSourcePos = -1
+            draggedApp = null
         }
     }
 
     private fun setupBookmarks() {
         bookmarkAdapter = BookmarkAdapter(
-            onEditTap = { app ->
-                showBookmarkOptions(app)
-            },
+            onRename = { app -> renameBookmark(app) },
             dragListener = if (Prefs.getEditMode()) bookmarkDragListener else null
         )
         binding.bookmarksGrid.apply {
@@ -382,7 +426,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
-                // In edit mode child views handle everything (drag + tap)
+                // In edit mode child views handle everything (drag + tap for rename)
                 if (Prefs.getEditMode()) return false
 
                 when (e.actionMasked) {
@@ -883,7 +927,7 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Save") { _, _ ->
                 val newLabel = input.text?.toString()?.trim() ?: ""
                 Prefs.setCustomLabel(app.id, newLabel)
-                loadApps()
+                loadBookmarks()
             }
             .setNegativeButton("Cancel", null)
             .create()
@@ -969,9 +1013,10 @@ class MainActivity : AppCompatActivity() {
                     3 -> {
                         Prefs.setEditMode(!editMode)
                         updateEditModeIcon()
+                        binding.dropZone.visibility = if (Prefs.getEditMode()) View.VISIBLE else View.GONE
                         // Rebind adapter so edit/lock touch listeners swap
                         bookmarkAdapter = BookmarkAdapter(
-                            onEditTap = { app -> showBookmarkOptions(app) },
+                            onRename = { app -> renameBookmark(app) },
                             dragListener = if (Prefs.getEditMode()) bookmarkDragListener else null
                         )
                         binding.bookmarksGrid.adapter = bookmarkAdapter

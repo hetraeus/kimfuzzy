@@ -1,131 +1,151 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:layout_height="match_parent">
 
-    <!-- Top Bar -->
+    <!-- Main content -->
     <LinearLayout
-        android:id="@+id/topBar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="16dp"
-        android:gravity="center_vertical">
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/timeText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/dateText"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/nextAlarm"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="12dp"
-            android:textSize="14sp" />
-
-        <TextView
-            android:id="@+id/settingsBtn"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:gravity="center"
-            android:textSize="20sp"
-            android:contentDescription="Settings" />
-    </LinearLayout>
-
-    <!-- Content Area -->
-    <FrameLayout
-        android:id="@+id/contentArea"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/bookmarksGrid"
+        <!-- Top Bar -->
+        <LinearLayout
+            android:id="@+id/topBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
+            android:orientation="horizontal"
             android:padding="16dp"
-            android:clipToPadding="false" />
+            android:gravity="center_vertical">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/appList"
+            <TextView
+                android:id="@+id/timeText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/dateText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/nextAlarm"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="12dp"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/settingsBtn"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:gravity="center"
+                android:textSize="20sp"
+                android:contentDescription="Settings" />
+        </LinearLayout>
+
+        <!-- Content Area -->
+        <FrameLayout
+            android:id="@+id/contentArea"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:padding="8dp"
-            android:clipToPadding="false"
-            android:visibility="gone" />
+            android:layout_height="0dp"
+            android:layout_weight="1">
 
-        <TextView
-            android:id="@+id/emptyState"
-            android:layout_width="wrap_content"
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/bookmarksGrid"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:padding="16dp"
+                android:clipToPadding="false" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/appList"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="8dp"
+                android:clipToPadding="false"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/emptyState"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="No apps found"
+                android:textSize="16sp"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <!-- Filter -->
+        <LinearLayout
+            android:id="@+id/filterContainer"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:text="No apps found"
-            android:textSize="16sp"
-            android:visibility="gone" />
-    </FrameLayout>
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:visibility="gone">
 
-    <!-- Filter -->
-    <LinearLayout
-        android:id="@+id/filterContainer"
+            <ImageButton
+                android:id="@+id/clearBtn"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_close"
+                android:visibility="gone"
+                android:contentDescription="Clear search" />
+
+            <EditText
+                android:id="@+id/filter"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:padding="8dp"
+                android:hint="Search apps..."
+                android:gravity="center"
+                android:textAlignment="center"
+                android:imeOptions="actionSearch|flagNoExtractUi"
+                android:inputType="text"
+                android:background="@android:color/transparent" />
+
+            <TextView
+                android:id="@+id/playBtn"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:text="▶"
+                android:textSize="24sp"
+                android:gravity="center"
+                android:visibility="gone"
+                android:contentDescription="Open app" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Drop Zone overlay at top -->
+    <TextView
+        android:id="@+id/dropZone"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingTop="4dp"
-        android:paddingBottom="4dp"
-        android:paddingStart="4dp"
-        android:paddingEnd="4dp"
-        android:visibility="gone">
+        android:layout_gravity="top"
+        android:gravity="center"
+        android:padding="8dp"
+        android:text="🗑️ Drop here to hide"
+        android:textSize="13sp"
+        android:alpha="0.7"
+        android:visibility="gone" />
 
-        <ImageButton
-            android:id="@+id/clearBtn"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_close"
-            android:visibility="gone"
-            android:contentDescription="Clear search" />
-
-        <EditText
-            android:id="@+id/filter"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:padding="8dp"
-            android:hint="Search apps..."
-            android:gravity="center"
-            android:textAlignment="center"
-            android:imeOptions="actionSearch|flagNoExtractUi"
-            android:inputType="text"
-            android:background="@android:color/transparent" />
-
-        <TextView
-            android:id="@+id/playBtn"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:text="▶"
-            android:textSize="24sp"
-            android:gravity="center"
-            android:visibility="gone"
-            android:contentDescription="Open app" />
-    </LinearLayout>
-</LinearLayout>
+</FrameLayout>

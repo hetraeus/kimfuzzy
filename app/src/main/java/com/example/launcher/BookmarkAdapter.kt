@@ -9,7 +9,7 @@ import com.example.launcher.databinding.ItemBookmarkBinding
 import kotlin.math.abs
 
 class BookmarkAdapter(
-    private val onEditTap: ((AppInfo) -> Unit)? = null,
+    private val onRename: ((AppInfo) -> Unit)? = null,
     private val dragListener: DragListener? = null
 ) : RecyclerView.Adapter<BookmarkAdapter.ViewHolder>() {
 
@@ -66,7 +66,7 @@ class BookmarkAdapter(
             IconSize.apply(holder.binding.icon, app.icon, app.iconFromPack)
 
             if (dragListener != null) {
-                // Edit mode: drag to move, tap (no movement) to open menu
+                // Edit mode: drag to move, tap to rename
                 val dragThreshold = 28f * holder.binding.root.context.resources.displayMetrics.density
                 var hasMoved = false
                 var startRawX = 0f
@@ -99,7 +99,7 @@ class BookmarkAdapter(
                         }
                         MotionEvent.ACTION_UP -> {
                             if (hasMoved) dragListener.onDragEnd(event.rawX, event.rawY)
-                            else onEditTap?.invoke(app)
+                            else onRename?.invoke(app)
                             true
                         }
                         MotionEvent.ACTION_CANCEL -> {
