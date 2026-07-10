@@ -149,15 +149,12 @@ class MainActivity : AppCompatActivity() {
     private fun resetToBookmarks() {
         binding.filter.text?.clear()
         binding.filter.clearFocus()
-        if (isKeyboardVisible) {
-            hideKeyboard()
-        } else {
-            binding.filterContainer.visibility = View.GONE
-            binding.bookmarksGrid.visibility = View.VISIBLE
-            binding.appList.visibility = View.GONE
-            binding.emptyState.visibility = View.GONE
-            loadBookmarks()
-        }
+        hideKeyboard()
+        binding.filterContainer.visibility = View.GONE
+        binding.bookmarksGrid.visibility = View.VISIBLE
+        binding.appList.visibility = View.GONE
+        binding.emptyState.visibility = View.GONE
+        loadBookmarks()
     }
 
     private fun handleConfirmPinShortcut(intent: Intent) {
@@ -605,21 +602,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onKeyboardVisibilityChanged() {
-        if (isKeyboardVisible) {
-            binding.bookmarksGrid.visibility = View.GONE
-            binding.appList.visibility = View.VISIBLE
-            binding.filterContainer.visibility = View.VISIBLE
-            filterApps(binding.filter.text?.toString() ?: "")
-            scrollToBottom()
-        } else {
-            binding.bookmarksGrid.visibility = View.VISIBLE
-            binding.appList.visibility = View.GONE
-            binding.filterContainer.visibility = View.GONE
-            binding.emptyState.visibility = View.GONE
-            binding.filter.clearFocus()
-            hideKeyboard()
-            loadBookmarks()
-        }
+        // Don't auto-switch views on keyboard change.
+        // User controls view via swipe / back button.
     }
 
     private fun setupSettings() {
@@ -903,6 +887,7 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("Cancel", null)
             .create()
 
+
         dialog.setOnShowListener {
             input.requestFocus()
             dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
@@ -932,6 +917,7 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("Cancel", null)
             .create()
 
+
         dialog.setOnShowListener {
             input.requestFocus()
             dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
@@ -958,12 +944,9 @@ class MainActivity : AppCompatActivity() {
                 Prefs.setAppPrefix(app.id, prefix)
                 loadApps()
             }
-            .setNegativeButton("Remove") { _, _ ->
-                Prefs.setAppPrefix(app.id, "")
-                loadApps()
-            }
-            .setNeutralButton("Cancel", null)
+            .setNegativeButton("Cancel", null)
             .create()
+
 
         dialog.setOnShowListener {
             input.requestFocus()
