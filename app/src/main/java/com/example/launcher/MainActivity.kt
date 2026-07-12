@@ -203,6 +203,7 @@ class MainActivity : AppCompatActivity() {
         binding.filter.setHintTextColor(textSecondary)
 
         binding.settingsBtn.setTextColor(accent)
+        binding.calendarBtn.setTextColor(accent)
         binding.clearBtn.setColorFilter(accent)
         binding.playBtn.setTextColor(accent)
 
@@ -231,12 +232,15 @@ class MainActivity : AppCompatActivity() {
         }, 60000)
 
         binding.timeText.setOnClickListener {
-            val intent = Intent(AlarmClock.ACTION_SHOW_ALARMS)
-            if (intent.resolveActivity(packageManager) != null) startActivity(intent)
+            openClockApp()
         }
 
         binding.dateText.setOnClickListener {
-            openCalendar()
+            openCalendarView()
+        }
+
+        binding.calendarBtn.setOnClickListener {
+            openCalendarEvent()
         }
 
         binding.nextAlarm.setOnClickListener {
@@ -245,7 +249,32 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun openCalendar() {
+    private fun openClockApp() {
+        // Instead of hardcoding package/class names (which crash with a
+        // SecurityException/ActivityNotFoundException on devices where those
+        // components don't exist or aren't exported — taking the whole
+        // launcher down to a black screen), ask the system which app
+        // actually handles the clock intent, then open that app's own UI
+        // (its home screen remembers whichever tab — alarm/timer/stopwatch —
+        // was last used, rather than jumping straight to alarms).
+        try {
+            val probeIntent = Intent(AlarmClock.ACTION_SHOW_ALARMS)
+            val resolveInfo = packageManager.resolveActivity(probeIntent, 0)
+            val clockPackage = resolveInfo?.activityInfo?.packageName
+
+            val launchIntent = clockPackage?.let { packageManager.getLaunchIntentForPackage(it) }
+
+            when {
+                launchIntent != null -> startActivity(launchIntent)
+                probeIntent.resolveActivity(packageManager) != null -> startActivity(probeIntent)
+                else -> Toast.makeText(this, "No clock app found", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Couldn't open clock app", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun openCalendarEvent() {
         val intent = Intent(Intent.ACTION_INSERT).apply {
             data = CalendarContract.Events.CONTENT_URI
         }
@@ -264,6 +293,22 @@ class MainActivity : AppCompatActivity() {
 
         if (fallback.resolveActivity(packageManager) != null) {
             startActivity(fallback)
+            return
+        }
+
+        Toast.makeText(this, "No calendar app found", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun openCalendarView() {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            data = CalendarContract.CONTENT_URI.buildUpon()
+                .appendPath("time")
+                .appendPath(System.currentTimeMillis().toString())
+                .build()
+        }
+
+        if (intent.resolveActivity(packageManager) != null) {
+            startActivity(intent)
             return
         }
 
@@ -629,12 +674,14 @@ class MainActivity : AppCompatActivity() {
             val resolveMap = resolves.associateBy { it.activityInfo.packageName }
 
             val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+            val forgottenLinks = Prefs.getForgottenLinks()
             val shortcuts = if (launcherApps.hasShortcutHostPermission()) {
                 try {
                     val query = LauncherApps.ShortcutQuery().apply {
                         setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED)
                     }
-                    launcherApps.getShortcuts(query, android.os.Process.myUserHandle()) ?: emptyList()
+                    (launcherApps.getShortcuts(query, android.os.Process.myUserHandle()) ?: emptyList())
+                        .filterNot { "shortcut:${it.`package`}:${it.id}" in forgottenLinks }
                 } catch (e: Exception) {
                     emptyList()
                 }
@@ -794,13 +841,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun filterApps(query: String) {
+        // Apps prefixed "zzz" are kept out of the search list by default —
+        // they only reappear if the query itself is filtering for "zzz".
+        val isFilteringByZzz = query.contains("zzz", ignoreCase = true)
+        val visibleApps = if (isFilteringByZzz) {
+            allApps
+        } else {
+            allApps.filterNot { it.prefix.equals("zzz", ignoreCase = true) }
+        }
+
         if (query.isEmpty()) {
-            appAdapter.submitList(allApps)
+            appAdapter.submitList(visibleApps)
             binding.emptyState.visibility = View.GONE
             return
         }
 
-        val scored = allApps.map { app ->
+        val scored = visibleApps.map { app ->
             val displayScore = FzfScorer.score(query, app.displayName)
             val labelScore = FzfScorer.score(query, app.label)
             val base = maxOf(displayScore, labelScore)
@@ -838,21 +894,44 @@ class MainActivity : AppCompatActivity() {
 
     private fun showAppOptions(app: AppInfo) {
         val isBookmarked = Prefs.isBookmarked(app.id)
-        val options = arrayOf(
-            if (isBookmarked) "Hide bookmark" else "Add bookmark",
-            "Edit prefix",
-            "App info"
-        )
+        val isShortcut = app.shortcutId != null
+        val options = buildList {
+            add(if (isBookmarked) "Hide bookmark" else "Add bookmark")
+            add("Edit prefix")
+            if (isShortcut) {
+                // Only shortcuts (links to files/web pages/etc.) can go stale when
+                // the underlying target is deleted or moved. Real installed apps
+                // are never offered this option — they should stay in the search
+                // list until actually uninstalled.
+                add("Forget link")
+            } else {
+                add("App info")
+            }
+        }.toTypedArray()
 
         MaterialAlertDialogBuilder(this)
             .setTitle(app.label)
             .setItems(options) { _, which ->
-                when (which) {
-                    0 -> toggleBookmark(app)
-                    1 -> editPrefix(app)
-                    2 -> showAppInfo(app)
+                when (options[which]) {
+                    "Hide bookmark", "Add bookmark" -> toggleBookmark(app)
+                    "Edit prefix" -> editPrefix(app)
+                    "App info" -> showAppInfo(app)
+                    "Forget link" -> forgetLink(app)
                 }
             }
+            .show()
+    }
+
+    private fun forgetLink(app: AppInfo) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Forget this link?")
+            .setMessage("\"${app.label}\" will be removed from the search list. Any bookmark pointing to it will stop working, but you can remove that separately.")
+            .setPositiveButton("Forget") { _, _ ->
+                Prefs.forgetLink(app.id)
+                Toast.makeText(this, "Forgot: ${app.label}", Toast.LENGTH_SHORT).show()
+                loadApps()
+            }
+            .setNegativeButton("Cancel", null)
             .show()
     }
 
@@ -984,7 +1063,7 @@ class MainActivity : AppCompatActivity() {
     private fun showSettingsDialog() {
         val editMode = Prefs.getEditMode()
         val editLabel = if (editMode) "💮 Lock bookmarks" else "✏️ Edit bookmarks"
-        val options = arrayOf("Theme", "Icon Size", "Icon Pack", editLabel, "Set as Default Launcher")
+        val options = arrayOf("Theme", "Icon Size", "Icon Pack", editLabel, "Export settings", "Import settings", "Set as Default Launcher")
 
         MaterialAlertDialogBuilder(this)
             .setTitle("Settings")
@@ -1010,10 +1089,48 @@ class MainActivity : AppCompatActivity() {
                             Toast.LENGTH_SHORT
                         ).show()
                     }
-                    4 -> promptSetDefaultLauncher()
+                    4 -> exportSettings()
+                    5 -> importSettings()
+                    6 -> promptSetDefaultLauncher()
                 }
             }
             .setNegativeButton("Close", null)
+            .show()
+    }
+
+    private fun exportSettings() {
+        val json = Prefs.export()
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        val clip = android.content.ClipData.newPlainText("launcher_settings", json)
+        clipboard.setPrimaryClip(clip)
+        Toast.makeText(this, "Settings copied to clipboard", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun importSettings() {
+        val input = EditText(this).apply {
+            hint = "Paste settings JSON here..."
+            setTextColor(ThemeUtils.getTextColor())
+            setHintTextColor(ThemeUtils.getSecondaryTextColor())
+            setBackgroundColor(Color.TRANSPARENT)
+            setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
+            minLines = 4
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Import settings")
+            .setView(input)
+            .setPositiveButton("Import") { _, _ ->
+                val json = input.text?.toString()?.trim() ?: ""
+                if (json.isNotEmpty()) {
+                    if (Prefs.import(json)) {
+                        Toast.makeText(this, "Settings imported. Restarting...", Toast.LENGTH_SHORT).show()
+                        recreate()
+                    } else {
+                        Toast.makeText(this, "Invalid settings JSON", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
             .show()
     }
 

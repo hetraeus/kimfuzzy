@@ -3,6 +3,8 @@ package com.example.launcher
 import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Color
+import org.json.JSONArray
+import org.json.JSONObject
 
 object Prefs {
     private lateinit var prefs: SharedPreferences
@@ -74,6 +76,22 @@ object Prefs {
         prefs.edit().putString("bookmarks_ordered", list.joinToString(",")).apply()
     }
 
+    // ── Forgotten links (shortcuts to files/web pages the user chose to drop) ──
+    // Only ever applied to shortcut entries (ids of the form "shortcut:pkg:id"),
+    // never to real installed apps.
+
+    fun getForgottenLinks(): Set<String> {
+        val str = prefs.getString("forgotten_links", "") ?: ""
+        return if (str.isEmpty()) emptySet() else str.split(",").toSet()
+    }
+
+    fun forgetLink(id: String) {
+        val set = getForgottenLinks().toMutableSet()
+        if (set.add(id)) {
+            prefs.edit().putString("forgotten_links", set.joinToString(",")).apply()
+        }
+    }
+
     private const val LAST_LAUNCH_PREFIX = "last_launch_"
 
     fun getLastLaunchTime(appId: String): Long {
@@ -82,5 +100,73 @@ object Prefs {
 
     fun setLastLaunchTime(appId: String, time: Long) {
         prefs.edit().putLong(LAST_LAUNCH_PREFIX + appId, time).apply()
+    }
+
+    // ── Export / Import ───────────────────────────────────────────────
+
+    fun export(): String {
+        val root = JSONObject()
+        root.put("theme", getTheme())
+        root.put("icon_size", getIconSize())
+        root.put("icon_pack", getIconPack())
+
+        val prefixes = JSONObject()
+        val labels = JSONObject()
+        for (key in prefs.all.keys) {
+            when {
+                key.startsWith("prefix_") -> {
+                    val pkg = key.removePrefix("prefix_")
+                    prefixes.put(pkg, prefs.getString(key, ""))
+                }
+                key.startsWith("label_") -> {
+                    val id = key.removePrefix("label_")
+                    labels.put(id, prefs.getString(key, ""))
+                }
+            }
+        }
+        root.put("prefixes", prefixes)
+        root.put("labels", labels)
+        return root.toString(2)
+    }
+
+    fun import(json: String): Boolean {
+        return try {
+            val root = JSONObject(json)
+            val editor = prefs.edit()
+
+            editor.putString("theme", root.optString("theme", "light"))
+            editor.putString("icon_size", root.optString("icon_size", "default"))
+            editor.putString("icon_pack", root.optString("icon_pack", ""))
+
+            // Clear old prefixes and labels
+            for (key in prefs.all.keys) {
+                if (key.startsWith("prefix_") || key.startsWith("label_")) {
+                    editor.remove(key)
+                }
+            }
+
+            val prefixes = root.optJSONObject("prefixes")
+            if (prefixes != null) {
+                val keys = prefixes.keys()
+                while (keys.hasNext()) {
+                    val pkg = keys.next()
+                    editor.putString("prefix_$pkg", prefixes.getString(pkg))
+                }
+            }
+
+            val labels = root.optJSONObject("labels")
+            if (labels != null) {
+                val keys = labels.keys()
+                while (keys.hasNext()) {
+                    val id = keys.next()
+                    editor.putString("label_$id", labels.getString(id))
+                }
+            }
+
+            editor.apply()
+            true
+        } catch (e: Exception) {
+            false
+        }
     }
 }
