@@ -25,9 +25,19 @@ object Prefs {
     fun getEditMode(): Boolean = prefs.getBoolean("edit_mode", false)
     fun setEditMode(enabled: Boolean) = prefs.edit().putBoolean("edit_mode", enabled).apply()
 
+    // ── Background Image ───────────────────────────────────────────────
+    fun getBackgroundImage(): String? = prefs.getString("background_image", null)
+    fun setBackgroundImage(uri: String?) {
+        if (uri != null) {
+            prefs.edit().putString("background_image", uri).apply()
+        } else {
+            prefs.edit().remove("background_image").apply()
+        }
+    }
+
     fun getAppPrefix(packageName: String): String? {
-        val p = prefs.getString("prefix_$packageName", null)
-        return if (p.isNullOrBlank()) null else p
+        if (!prefs.contains("prefix_$packageName")) return null
+        return prefs.getString("prefix_$packageName", "") ?: ""
     }
 
     fun setAppPrefix(packageName: String, prefix: String) =
@@ -76,10 +86,6 @@ object Prefs {
         prefs.edit().putString("bookmarks_ordered", list.joinToString(",")).apply()
     }
 
-    // ── Forgotten links (shortcuts to files/web pages the user chose to drop) ──
-    // Only ever applied to shortcut entries (ids of the form "shortcut:pkg:id"),
-    // never to real installed apps.
-
     fun getForgottenLinks(): Set<String> {
         val str = prefs.getString("forgotten_links", "") ?: ""
         return if (str.isEmpty()) emptySet() else str.split(",").toSet()
@@ -109,6 +115,7 @@ object Prefs {
         root.put("theme", getTheme())
         root.put("icon_size", getIconSize())
         root.put("icon_pack", getIconPack())
+        root.put("background_image", getBackgroundImage() ?: "")
 
         val prefixes = JSONObject()
         val labels = JSONObject()
@@ -138,7 +145,13 @@ object Prefs {
             editor.putString("icon_size", root.optString("icon_size", "default"))
             editor.putString("icon_pack", root.optString("icon_pack", ""))
 
-            // Clear old prefixes and labels
+            val bgImage = root.optString("background_image", "")
+            if (bgImage.isNotEmpty()) {
+                editor.putString("background_image", bgImage)
+            } else {
+                editor.remove("background_image")
+            }
+
             for (key in prefs.all.keys) {
                 if (key.startsWith("prefix_") || key.startsWith("label_")) {
                     editor.remove(key)

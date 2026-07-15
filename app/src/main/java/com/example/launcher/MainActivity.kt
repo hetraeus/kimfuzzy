@@ -24,6 +24,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -55,12 +56,24 @@ class MainActivity : AppCompatActivity() {
     private var allApps = listOf<AppInfo>()
     private var isKeyboardVisible = false
 
-    // Custom drag state
     private var floatingView: View? = null
     private var dragTouchOffsetX = 0f
     private var dragTouchOffsetY = 0f
     private var dragSourcePos = -1
     private var draggedApp: AppInfo? = null
+
+    private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let {
+            try {
+                contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                Prefs.setBackgroundImage(it.toString())
+                applyBackgroundImage()
+                Toast.makeText(this, "Background image set", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(this, "Failed to set background image", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -93,6 +106,7 @@ class MainActivity : AppCompatActivity() {
         setupKeyboardListener()
         setupSettings()
         setupGridTouchListener()
+        applyBackgroundImage()
 
         loadApps()
         handleIntent(intent)
@@ -207,12 +221,29 @@ class MainActivity : AppCompatActivity() {
         binding.clearBtn.setColorFilter(accent)
         binding.playBtn.setTextColor(accent)
 
-        // Drop zone styling
         binding.dropZone.setTextColor(textSecondary)
         binding.dropZone.setBackgroundColor(bg)
         binding.dropZone.visibility = if (Prefs.getEditMode()) View.VISIBLE else View.GONE
 
         updateEditModeIcon()
+    }
+
+    private fun applyBackgroundImage() {
+        val bgUri = Prefs.getBackgroundImage()
+        if (bgUri != null) {
+            try {
+                val uri = Uri.parse(bgUri)
+                contentResolver.openInputStream(uri)?.use { stream ->
+                    val drawable = android.graphics.drawable.Drawable.createFromStream(stream, null)
+                    binding.bookmarksGrid.background = drawable
+                }
+            } catch (e: Exception) {
+                binding.bookmarksGrid.background = null
+                Prefs.setBackgroundImage(null)
+            }
+        } else {
+            binding.bookmarksGrid.background = null
+        }
     }
 
     private fun updateEditModeIcon() {
@@ -250,13 +281,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openClockApp() {
-        // Instead of hardcoding package/class names (which crash with a
-        // SecurityException/ActivityNotFoundException on devices where those
-        // components don't exist or aren't exported — taking the whole
-        // launcher down to a black screen), ask the system which app
-        // actually handles the clock intent, then open that app's own UI
-        // (its home screen remembers whichever tab — alarm/timer/stopwatch —
-        // was last used, rather than jumping straight to alarms).
         try {
             val probeIntent = Intent(AlarmClock.ACTION_SHOW_ALARMS)
             val resolveInfo = packageManager.resolveActivity(probeIntent, 0)
@@ -389,12 +413,10 @@ class MainActivity : AppCompatActivity() {
             floatingView?.let { binding.contentArea.removeView(it) }
             floatingView = null
 
-            // Check if dropped in the hide zone (top area)
             val dropZoneLoc = IntArray(2)
             binding.dropZone.getLocationOnScreen(dropZoneLoc)
             val dropZoneHeight = binding.dropZone.height
             if (dropZoneHeight > 0 && rawY >= dropZoneLoc[1] && rawY <= dropZoneLoc[1] + dropZoneHeight) {
-                // Dropped in hide zone
                 if (dragSourcePos != -1 && draggedApp != null) {
                     Prefs.removeBookmark(draggedApp!!.id)
                     loadBookmarks()
@@ -405,7 +427,6 @@ class MainActivity : AppCompatActivity() {
                 return
             }
 
-            // Check if dropped on an empty grid cell -> move icon there
             val rvLoc = IntArray(2)
             binding.bookmarksGrid.getLocationOnScreen(rvLoc)
             val dropX = rawX - rvLoc[0]
@@ -416,17 +437,14 @@ class MainActivity : AppCompatActivity() {
             if (targetPos != -1 && targetPos != dragSourcePos && dragSourcePos != -1) {
                 val mutable = bookmarkAdapter.getItems().toMutableList()
                 if (mutable[targetPos] == null) {
-                    // Empty slot: move icon there
                     mutable[targetPos] = mutable[dragSourcePos]
                     mutable[dragSourcePos] = null
                     bookmarkAdapter.submitList(mutable)
                     Prefs.saveBookmarks(mutable.map { it?.id ?: "" })
                 } else {
-                    // Occupied slot: return to original
                     bookmarkAdapter.notifyItemChanged(dragSourcePos)
                 }
             } else {
-                // Dropped outside grid: return to original
                 if (dragSourcePos != -1) bookmarkAdapter.notifyItemChanged(dragSourcePos)
             }
             dragSourcePos = -1
@@ -468,7 +486,6 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
-                // In edit mode child views handle everything (drag + tap for rename)
                 if (Prefs.getEditMode()) return false
 
                 when (e.actionMasked) {
@@ -503,7 +520,6 @@ class MainActivity : AppCompatActivity() {
                             cancelPending()
                         }
 
-                        // Upward swipe opens filter (right-to-Termux removed)
                         if (dy > swipeThreshold && dy > abs(dx) * 2) {
                             cancelPending()
                             showFilter()
@@ -646,10 +662,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun onKeyboardVisibilityChanged() {
-        // Don't auto-switch views on keyboard change.
-        // User controls view via swipe / back button.
-    }
+    private fun onKeyboardVisibilityChanged() {}
 
     private fun setupSettings() {
         binding.settingsBtn.setOnClickListener {
@@ -701,7 +714,7 @@ class MainActivity : AppCompatActivity() {
 
                 val autoPrefix = getCategoryPrefix(appInfo)
                 val userPrefix = Prefs.getAppPrefix(pkg)
-                val prefix = if (!userPrefix.isNullOrBlank()) userPrefix else autoPrefix
+                val prefix = userPrefix ?: autoPrefix
 
                 val display = if (prefix.isNotEmpty()) "$prefix - $label" else label
 
@@ -724,7 +737,7 @@ class MainActivity : AppCompatActivity() {
 
                 val autoPrefix = "Shortcut"
                 val userPrefix = Prefs.getAppPrefix(id)
-                val prefix = if (!userPrefix.isNullOrBlank()) userPrefix else autoPrefix
+                val prefix = userPrefix ?: autoPrefix
 
                 val display = if (prefix.isNotEmpty()) "$prefix - $label" else label
 
@@ -823,7 +836,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadBookmarks() {
         val bookmarked = Prefs.getBookmarks()
-        val maxSlots = calculateSpanCount() * 7 // 5×7 = 35
+        val maxSlots = calculateSpanCount() * 7
         val appsMap = allApps.associateBy { it.id }
 
         val grid = MutableList<AppInfo?>(maxSlots) { null }
@@ -841,8 +854,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun filterApps(query: String) {
-        // Apps prefixed "zzz" are kept out of the search list by default —
-        // they only reappear if the query itself is filtering for "zzz".
         val isFilteringByZzz = query.contains("zzz", ignoreCase = true)
         val visibleApps = if (isFilteringByZzz) {
             allApps
@@ -899,10 +910,6 @@ class MainActivity : AppCompatActivity() {
             add(if (isBookmarked) "Hide bookmark" else "Add bookmark")
             add("Edit prefix")
             if (isShortcut) {
-                // Only shortcuts (links to files/web pages/etc.) can go stale when
-                // the underlying target is deleted or moved. Real installed apps
-                // are never offered this option — they should stay in the search
-                // list until actually uninstalled.
                 add("Forget link")
             } else {
                 add("App info")
@@ -966,7 +973,6 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("Cancel", null)
             .create()
 
-
         dialog.setOnShowListener {
             input.requestFocus()
             dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
@@ -996,7 +1002,6 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("Cancel", null)
             .create()
 
-
         dialog.setOnShowListener {
             input.requestFocus()
             dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
@@ -1025,7 +1030,6 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("Cancel", null)
             .create()
-
 
         dialog.setOnShowListener {
             input.requestFocus()
@@ -1063,7 +1067,7 @@ class MainActivity : AppCompatActivity() {
     private fun showSettingsDialog() {
         val editMode = Prefs.getEditMode()
         val editLabel = if (editMode) "💮 Lock bookmarks" else "✏️ Edit bookmarks"
-        val options = arrayOf("Theme", "Icon Size", "Icon Pack", editLabel, "Export settings", "Import settings", "Set as Default Launcher")
+        val options = arrayOf("Theme", "Icon Size", "Icon Pack", "Background Image", editLabel, "Export settings", "Import settings", "Set as Default Launcher")
 
         MaterialAlertDialogBuilder(this)
             .setTitle("Settings")
@@ -1072,11 +1076,11 @@ class MainActivity : AppCompatActivity() {
                     0 -> showThemePicker()
                     1 -> showIconSizePicker()
                     2 -> showIconPackPicker()
-                    3 -> {
+                    3 -> showBackgroundImagePicker()
+                    4 -> {
                         Prefs.setEditMode(!editMode)
                         updateEditModeIcon()
                         binding.dropZone.visibility = if (Prefs.getEditMode()) View.VISIBLE else View.GONE
-                        // Rebind adapter so edit/lock touch listeners swap
                         bookmarkAdapter = BookmarkAdapter(
                             onRename = { app -> renameBookmark(app) },
                             dragListener = if (Prefs.getEditMode()) bookmarkDragListener else null
@@ -1089,12 +1093,36 @@ class MainActivity : AppCompatActivity() {
                             Toast.LENGTH_SHORT
                         ).show()
                     }
-                    4 -> exportSettings()
-                    5 -> importSettings()
-                    6 -> promptSetDefaultLauncher()
+                    5 -> exportSettings()
+                    6 -> importSettings()
+                    7 -> promptSetDefaultLauncher()
                 }
             }
             .setNegativeButton("Close", null)
+            .show()
+    }
+
+    private fun showBackgroundImagePicker() {
+        val currentUri = Prefs.getBackgroundImage()
+        val options = if (currentUri != null) {
+            arrayOf("Choose image", "Remove background")
+        } else {
+            arrayOf("Choose image")
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Background Image")
+            .setItems(options) { _, which ->
+                when (options[which]) {
+                    "Choose image" -> pickImageLauncher.launch(arrayOf("image/*"))
+                    "Remove background" -> {
+                        Prefs.setBackgroundImage(null)
+                        binding.bookmarksGrid.background = null
+                        Toast.makeText(this, "Background removed", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
             .show()
     }
 
@@ -1218,11 +1246,7 @@ class MainActivity : AppCompatActivity() {
         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         imm.hideSoftInputFromWindow(binding.filter.windowToken, 0)
     }
-    private fun showKeyboardForEditText(editText: EditText) {
-        editText.requestFocus()
-        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        imm.showSoftInput(editText, InputMethodManager.SHOW_IMPLICIT)
-    }
+
     private fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
 
     @Deprecated("Deprecated in Java")
