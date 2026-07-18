@@ -680,6 +680,24 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadApps() {
         lifecycleScope.launch(Dispatchers.IO) {
+            // Fast path: on a cold start (e.g. the launcher's process was
+            // killed in the background and this Activity is being recreated
+            // from scratch), paint immediately from the last cached snapshot
+            // instead of leaving the screen blank/stale until a full
+            // PackageManager scan + icon resolution finishes below.
+            if (allApps.isEmpty()) {
+                val cached = AppCache.loadCachedApps(applicationContext)
+                if (cached.isNotEmpty()) {
+                    allApps = cached
+                    withContext(Dispatchers.Main) {
+                        loadBookmarks()
+                        if (isKeyboardVisible) {
+                            filterApps(binding.filter.text?.toString() ?: "")
+                        }
+                    }
+                }
+            }
+
             val oldAppsMap = allApps.associateBy { it.id }
 
             val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
@@ -805,6 +823,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             allApps = appsWithIcons
+            AppCache.saveApps(applicationContext, appsWithIcons)
 
             withContext(Dispatchers.Main) {
                 loadBookmarks()
