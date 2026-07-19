@@ -106,6 +106,7 @@ class MainActivity : AppCompatActivity() {
         setupKeyboardListener()
         setupSettings()
         setupGridTouchListener()
+        setupBlackCurtain()
         applyBackgroundImage()
 
         loadApps()
@@ -169,6 +170,7 @@ class MainActivity : AppCompatActivity() {
         binding.appList.visibility = View.GONE
         binding.emptyState.visibility = View.GONE
         loadBookmarks()
+        applyBlackCurtainState()
     }
 
     private fun handleConfirmPinShortcut(intent: Intent) {
@@ -561,6 +563,47 @@ class MainActivity : AppCompatActivity() {
             override fun onTouchEvent(rv: RecyclerView, e: MotionEvent) {}
             override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {}
         })
+    }
+
+    private fun setupBlackCurtain() {
+        binding.curtainSettingsBtn.setOnClickListener {
+            showSettingsDialog()
+        }
+
+        val swipeThreshold = 60f * resources.displayMetrics.density
+        binding.blackCurtain.setOnTouchListener(object : View.OnTouchListener {
+            private var startX = 0f
+            private var startY = 0f
+
+            override fun onTouch(v: View, event: MotionEvent): Boolean {
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        startX = event.x
+                        startY = event.y
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        val dx = event.x - startX
+                        val dy = startY - event.y
+                        if (dy > swipeThreshold && dy > abs(dx) * 2) {
+                            binding.blackCurtain.visibility = View.GONE
+                            showFilter()
+                            return true
+                        }
+                    }
+                }
+                // Consume every other touch so nothing behind the curtain
+                // (bookmarks, top bar buttons, etc.) ever receives it.
+                return true
+            }
+        })
+
+        applyBlackCurtainState()
+    }
+
+    /** Shows/hides the curtain based on the pref, but never over the search view. */
+    private fun applyBlackCurtainState() {
+        val shouldShow = Prefs.getBlackCurtain() && binding.filterContainer.visibility != View.VISIBLE
+        binding.blackCurtain.visibility = if (shouldShow) View.VISIBLE else View.GONE
     }
 
     private fun setupAppList() {
@@ -1086,7 +1129,9 @@ class MainActivity : AppCompatActivity() {
     private fun showSettingsDialog() {
         val editMode = Prefs.getEditMode()
         val editLabel = if (editMode) "💮 Lock bookmarks" else "✏️ Edit bookmarks"
-        val options = arrayOf("Theme", "Icon Size", "Icon Pack", "Background Image", editLabel, "Export settings", "Import settings", "Set as Default Launcher")
+        val curtainOn = Prefs.getBlackCurtain()
+        val curtainLabel = if (curtainOn) "⚫ Disable Black Curtain" else "⚫ Enable Black Curtain"
+        val options = arrayOf("Theme", "Icon Size", "Icon Pack", "Background Image", editLabel, curtainLabel, "Export settings", "Import settings", "Set as Default Launcher")
 
         MaterialAlertDialogBuilder(this)
             .setTitle("Settings")
@@ -1112,9 +1157,18 @@ class MainActivity : AppCompatActivity() {
                             Toast.LENGTH_SHORT
                         ).show()
                     }
-                    5 -> exportSettings()
-                    6 -> importSettings()
-                    7 -> promptSetDefaultLauncher()
+                    5 -> {
+                        Prefs.setBlackCurtain(!curtainOn)
+                        applyBlackCurtainState()
+                        Toast.makeText(
+                            this,
+                            if (!curtainOn) "⚫ Black Curtain enabled" else "☀️ Black Curtain disabled",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    6 -> exportSettings()
+                    7 -> importSettings()
+                    8 -> promptSetDefaultLauncher()
                 }
             }
             .setNegativeButton("Close", null)

@@ -25,6 +25,9 @@ object Prefs {
     fun getEditMode(): Boolean = prefs.getBoolean("edit_mode", false)
     fun setEditMode(enabled: Boolean) = prefs.edit().putBoolean("edit_mode", enabled).apply()
 
+    fun getBlackCurtain(): Boolean = prefs.getBoolean("black_curtain", false)
+    fun setBlackCurtain(enabled: Boolean) = prefs.edit().putBoolean("black_curtain", enabled).apply()
+
     // ── Background Image ───────────────────────────────────────────────
     fun getBackgroundImage(): String? = prefs.getString("background_image", null)
     fun setBackgroundImage(uri: String?) {
@@ -116,6 +119,7 @@ object Prefs {
         root.put("icon_size", getIconSize())
         root.put("icon_pack", getIconPack())
         root.put("background_image", getBackgroundImage() ?: "")
+        root.put("black_curtain", getBlackCurtain())
 
         val prefixes = JSONObject()
         val labels = JSONObject()
@@ -144,6 +148,7 @@ object Prefs {
             editor.putString("theme", root.optString("theme", "light"))
             editor.putString("icon_size", root.optString("icon_size", "default"))
             editor.putString("icon_pack", root.optString("icon_pack", ""))
+            editor.putBoolean("black_curtain", root.optBoolean("black_curtain", false))
 
             val bgImage = root.optString("background_image", "")
             if (bgImage.isNotEmpty()) {

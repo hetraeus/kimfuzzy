@@ -176,4 +176,31 @@
         android:alpha="0.7"
         android:visibility="gone" />
 
+    <!-- Black Curtain: opaque overlay for distraction-free PiP video watching.
+         Sits on top of everything. Blocks all touches except a swipe-up
+         gesture (still opens search) and its own settings button, which
+         mirrors the real settingsBtn so Settings stays reachable. -->
+    <FrameLayout
+        android:id="@+id/blackCurtain"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/black"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/curtainSettingsBtn"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:gravity="center"
+            android:text="𑁍"
+            android:textColor="#3D3D3D"
+            android:textSize="20sp"
+            android:contentDescription="Settings" />
+    </FrameLayout>
+
 </FrameLayout>
