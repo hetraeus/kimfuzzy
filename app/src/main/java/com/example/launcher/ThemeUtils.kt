@@ -41,6 +41,16 @@ object ThemeUtils {
             else -> Color.parseColor("#757575")
         }
     }
+
+    fun getDimmedTextColor(): Int {
+        return when (Prefs.getTheme()) {
+            "light" -> Color.parseColor("#9E9E9E")
+            "dark" -> Color.parseColor("#616161")
+            "sepia" -> Color.parseColor("#8B7355")
+            else -> Color.parseColor("#9E9E9E")
+        }
+    }
+
     fun getAccentColor(context: Context): Int {
         val attrs = intArrayOf(android.R.attr.colorPrimary)
         val ta = context.obtainStyledAttributes(attrs)

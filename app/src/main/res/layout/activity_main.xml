@@ -6,6 +6,16 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- Wallpaper: fills the full screen edge-to-edge (behind the top bar
+         and the bottom bookmarks area), scaled via centerCrop so it always
+         covers the screen without stretching/distorting the image. -->
+    <ImageView
+        android:id="@+id/backgroundImage"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:contentDescription="@null" />
+
     <!-- Main content -->
     <LinearLayout
         android:layout_width="match_parent"
@@ -112,6 +122,16 @@
                 android:layout_gravity="center"
                 android:text="No apps found"
                 android:textSize="16sp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/appStoresLookup"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="48dp"
+                android:text="Search app stores"
+                android:textSize="14sp"
                 android:visibility="gone" />
         </FrameLayout>
 
