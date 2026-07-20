@@ -76,7 +76,6 @@ private fun MainActivity.buildSettingsOptions() {
             setTextColor(if (label.startsWith("Set as")) accent else textColor)
             textSize = 16f
             setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
-            setBackgroundColor(Color.parseColor("#08FFFFFF"))
             isClickable = true
             isFocusable = true
             setOnClickListener {
@@ -89,18 +88,6 @@ private fun MainActivity.buildSettingsOptions() {
             }
         }
         container.addView(item)
-
-        // Divider
-        val divider = View(this).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dpToPx(1)
-            ).apply {
-                setMargins(dpToPx(16), 0, dpToPx(16), 0)
-            }
-            setBackgroundColor(ThemeUtils.getSecondaryTextColor())
-        }
-        container.addView(divider)
     }
 }
 

@@ -46,6 +46,21 @@ object Prefs {
     fun setAppPrefix(packageName: String, prefix: String) =
         prefs.edit().putString("prefix_$packageName", prefix).apply()
 
+    // ── App Annotations ────────────────────────────────────────────────
+    fun getAppAnnotation(id: String): String? {
+        if (!prefs.contains("annotation_$id")) return null
+        return prefs.getString("annotation_$id", "") ?: ""
+    }
+
+    fun setAppAnnotation(id: String, annotation: String) {
+        if (annotation.isBlank()) {
+            prefs.edit().remove("annotation_$id").apply()
+        } else {
+            prefs.edit().putString("annotation_$id", annotation).apply()
+        }
+    }
+
+
     fun getCustomLabel(id: String): String? {
         if (!prefs.contains("label_$id")) {
             return null
@@ -123,6 +138,7 @@ object Prefs {
 
         val prefixes = JSONObject()
         val labels = JSONObject()
+        val annotations = JSONObject()
         for (key in prefs.all.keys) {
             when {
                 key.startsWith("prefix_") -> {
@@ -133,10 +149,15 @@ object Prefs {
                     val id = key.removePrefix("label_")
                     labels.put(id, prefs.getString(key, ""))
                 }
+                key.startsWith("annotation_") -> {
+                    val id = key.removePrefix("annotation_")
+                    annotations.put(id, prefs.getString(key, ""))
+                }
             }
         }
         root.put("prefixes", prefixes)
         root.put("labels", labels)
+        root.put("annotations", annotations)
         return root.toString(2)
     }
 
@@ -158,7 +179,7 @@ object Prefs {
             }
 
             for (key in prefs.all.keys) {
-                if (key.startsWith("prefix_") || key.startsWith("label_")) {
+                if (key.startsWith("prefix_") || key.startsWith("label_") || key.startsWith("annotation_")) {
                     editor.remove(key)
                 }
             }
@@ -178,6 +199,15 @@ object Prefs {
                 while (keys.hasNext()) {
                     val id = keys.next()
                     editor.putString("label_$id", labels.getString(id))
+                }
+            }
+
+            val annotations = root.optJSONObject("annotations")
+            if (annotations != null) {
+                val keys = annotations.keys()
+                while (keys.hasNext()) {
+                    val id = keys.next()
+                    editor.putString("annotation_$id", annotations.getString(id))
                 }
             }
 

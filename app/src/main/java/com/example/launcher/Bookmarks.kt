@@ -6,7 +6,11 @@ import android.os.Looper
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.content.Context
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.recyclerview.widget.GridLayoutManager
@@ -142,6 +146,7 @@ internal fun MainActivity.setupGridTouchListener() {
         private var startY = 0f
         private var downTime = 0L
         private var hasMoved = false
+        private var suppressClick = false
         private val touchHandler = Handler(Looper.getMainLooper())
         private var dialogRunnable: Runnable? = null
 
@@ -159,6 +164,7 @@ internal fun MainActivity.setupGridTouchListener() {
                     startY = e.y
                     downTime = System.currentTimeMillis()
                     hasMoved = false
+                    suppressClick = false
 
                     val child = rv.findChildViewUnder(e.x, e.y)
                     if (child != null) {
@@ -167,6 +173,7 @@ internal fun MainActivity.setupGridTouchListener() {
                         if (app != null) {
                             dialogRunnable = Runnable {
                                 if (!hasMoved) {
+                                    suppressClick = true
                                     showBookmarkOptions(app)
                                 }
                             }
@@ -201,6 +208,11 @@ internal fun MainActivity.setupGridTouchListener() {
 
                     cancelPending()
 
+                    if (suppressClick) {
+                        suppressClick = false
+                        return false
+                    }
+
                     if (abs(dx) < clickSlop && abs(dy) < clickSlop && duration < 2000) {
                         val child = rv.findChildViewUnder(e.x, e.y)
                         if (child != null) {
@@ -216,6 +228,7 @@ internal fun MainActivity.setupGridTouchListener() {
 
                 MotionEvent.ACTION_CANCEL -> {
                     cancelPending()
+                    suppressClick = false
                     return false
                 }
 
@@ -316,16 +329,141 @@ internal fun MainActivity.renameBookmark(app: AppInfo) {
 }
 
 private fun MainActivity.showBookmarkOptions(app: AppInfo) {
-    val options = arrayOf("Rename bookmark", "Hide bookmark")
-    MaterialAlertDialogBuilder(this)
-        .setTitle(app.label.ifEmpty { "Bookmark" })
-        .setItems(options) { _, which ->
-            when (which) {
-                0 -> renameBookmark(app)
-                1 -> hideBookmark(app)
+    val textColor = ThemeUtils.getTextColor()
+    val accent = ThemeUtils.getAccentColor(this)
+    val secondaryText = ThemeUtils.getSecondaryTextColor()
+
+    // Build custom view
+    val contentView = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(8))
+    }
+
+    // App name (big)
+    val nameView = TextView(this).apply {
+        text = app.label
+        setTextColor(textColor)
+        textSize = 20f
+        setPadding(0, 0, 0, dpToPx(12))
+    }
+    contentView.addView(nameView)
+
+    // Annotation section
+    val annotationContainer = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+    }
+    contentView.addView(annotationContainer)
+
+    var dialogRef: androidx.appcompat.app.AlertDialog? = null
+
+    fun buildAnnotationSection() {
+        annotationContainer.removeAllViews()
+        val currentAnnotation = Prefs.getAppAnnotation(app.id)
+
+        if (currentAnnotation != null) {
+            // Show existing annotation
+            val annotationView = TextView(this).apply {
+                text = currentAnnotation
+                setTextColor(secondaryText)
+                textSize = 14f
+                maxLines = 3
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setPadding(0, 0, 0, dpToPx(12))
+                setOnClickListener {
+                    dialogRef?.dismiss()
+                    showBookmarkAnnotationEdit(app, ::buildAnnotationSection)
+                }
+            }
+            annotationContainer.addView(annotationView)
+        } else {
+            // Show "Annotate app" prompt
+            val annotatePrompt = TextView(this).apply {
+                text = "Annotate app"
+                setTextColor(accent)
+                textSize = 14f
+                setPadding(0, 0, 0, dpToPx(12))
+                setOnClickListener {
+                    dialogRef?.dismiss()
+                    showBookmarkAnnotationEdit(app, ::buildAnnotationSection)
+                }
+            }
+            annotationContainer.addView(annotatePrompt)
+        }
+    }
+
+    buildAnnotationSection()
+
+    // Divider
+    val divider = View(this).apply {
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            dpToPx(1)
+        ).apply { setMargins(0, 0, 0, dpToPx(8)) }
+        setBackgroundColor(secondaryText)
+    }
+    contentView.addView(divider)
+
+    // Action buttons
+    val actions = listOf(
+        "Rename bookmark" to { renameBookmark(app) },
+        "Hide bookmark" to { hideBookmark(app) }
+    )
+
+    for ((label, action) in actions) {
+        val btn = TextView(this).apply {
+            text = label
+            setTextColor(textColor)
+            textSize = 16f
+            setPadding(0, dpToPx(12), 0, dpToPx(12))
+            setOnClickListener {
+                dialogRef?.dismiss()
+                action()
             }
         }
-        .show()
+        contentView.addView(btn)
+    }
+
+    val dialog = MaterialAlertDialogBuilder(this)
+        .setView(contentView as android.view.View)
+        .create()
+    dialogRef = dialog
+
+    dialog.show()
+}
+
+private fun MainActivity.showBookmarkAnnotationEdit(app: AppInfo, onSaved: () -> Unit) {
+    val currentAnnotation = Prefs.getAppAnnotation(app.id) ?: ""
+
+    val input = EditText(this).apply {
+        setText(currentAnnotation)
+        setTextColor(ThemeUtils.getTextColor())
+        setHintTextColor(ThemeUtils.getSecondaryTextColor())
+        hint = "Why did you install this app?"
+        setBackgroundColor(Color.TRANSPARENT)
+        setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
+        minLines = 1
+        maxLines = 3
+    }
+
+    val dialog = MaterialAlertDialogBuilder(this)
+        .setTitle("Annotate ${app.label}")
+        .setView(input)
+        .setPositiveButton("Save") { _, _ ->
+            val text = input.text?.toString()?.trim() ?: ""
+            Prefs.setAppAnnotation(app.id, text)
+            onSaved()
+        }
+        .setNegativeButton("Cancel") { _, _ ->
+            onSaved()
+        }
+        .create()
+
+    dialog.setOnShowListener {
+        input.requestFocus()
+        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+    }
+
+    dialog.show()
 }
 
 private fun MainActivity.hideBookmark(app: AppInfo) {

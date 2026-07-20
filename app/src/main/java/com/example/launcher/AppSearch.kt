@@ -10,7 +10,10 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
 import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -168,27 +171,148 @@ internal fun MainActivity.launchApp(app: AppInfo) {
 private fun MainActivity.showAppOptions(app: AppInfo) {
     val isBookmarked = Prefs.isBookmarked(app.id)
     val isShortcut = app.shortcutId != null
-    val options = buildList {
-        add(if (isBookmarked) "Hide bookmark" else "Add bookmark")
-        add("Edit suffix")
-        if (isShortcut) {
-            add("Forget link")
-        } else {
-            add("App info")
-        }
-    }.toTypedArray()
+    val textColor = ThemeUtils.getTextColor()
+    val accent = ThemeUtils.getAccentColor(this)
+    val secondaryText = ThemeUtils.getSecondaryTextColor()
 
-    MaterialAlertDialogBuilder(this)
-        .setTitle(app.label)
-        .setItems(options) { _, which ->
-            when (options[which]) {
-                "Hide bookmark", "Add bookmark" -> toggleBookmark(app)
-                "Edit suffix" -> editPrefix(app)
-                "App info" -> showAppInfo(app)
-                "Forget link" -> forgetLink(app)
+    // Build custom view
+    val contentView = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(8))
+    }
+
+    // App name (big)
+    val nameView = TextView(this).apply {
+        text = app.label
+        setTextColor(textColor)
+        textSize = 20f
+        setPadding(0, 0, 0, dpToPx(12))
+    }
+    contentView.addView(nameView)
+
+    // Annotation section
+    val annotationContainer = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+    }
+    contentView.addView(annotationContainer)
+
+    var dialogRef: androidx.appcompat.app.AlertDialog? = null
+
+    fun buildAnnotationSection() {
+        annotationContainer.removeAllViews()
+        val currentAnnotation = Prefs.getAppAnnotation(app.id)
+
+        if (currentAnnotation != null) {
+            // Show existing annotation
+            val annotationView = TextView(this).apply {
+                text = currentAnnotation
+                setTextColor(secondaryText)
+                textSize = 14f
+                maxLines = 3
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setPadding(0, 0, 0, dpToPx(12))
+                setOnClickListener {
+                    dialogRef?.dismiss()
+                    showAnnotationEdit(app, ::buildAnnotationSection)
+                }
+            }
+            annotationContainer.addView(annotationView)
+        } else {
+            // Show "Annotate app" prompt
+            val annotatePrompt = TextView(this).apply {
+                text = "Annotate app"
+                setTextColor(accent)
+                textSize = 14f
+                setPadding(0, 0, 0, dpToPx(12))
+                setOnClickListener {
+                    dialogRef?.dismiss()
+                    showAnnotationEdit(app, ::buildAnnotationSection)
+                }
+            }
+            annotationContainer.addView(annotatePrompt)
+        }
+    }
+
+    buildAnnotationSection()
+
+    // Divider
+    val divider = View(this).apply {
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            dpToPx(1)
+        ).apply { setMargins(0, 0, 0, dpToPx(8)) }
+        setBackgroundColor(secondaryText)
+    }
+    contentView.addView(divider)
+
+    // Action buttons
+    val actionsContainer = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+    }
+    contentView.addView(actionsContainer)
+
+    val bookmarkAction = if (isBookmarked) "Hide bookmark" else "Add bookmark"
+    val actions = listOf(
+        bookmarkAction to { toggleBookmark(app) },
+        "Edit suffix" to { editPrefix(app) },
+        if (isShortcut) "Forget link" to { forgetLink(app) } else "App info" to { showAppInfo(app) }
+    )
+
+    for ((label, action) in actions) {
+        val btn = TextView(this).apply {
+            text = label
+            setTextColor(textColor)
+            textSize = 16f
+            setPadding(0, dpToPx(12), 0, dpToPx(12))
+            setOnClickListener {
+                dialogRef?.dismiss()
+                action()
             }
         }
-        .show()
+        actionsContainer.addView(btn)
+    }
+
+    val dialog = MaterialAlertDialogBuilder(this)
+        .setView(contentView as android.view.View)
+        .create()
+    dialogRef = dialog
+
+    dialog.show()
+}
+
+private fun MainActivity.showAnnotationEdit(app: AppInfo, onSaved: () -> Unit) {
+    val currentAnnotation = Prefs.getAppAnnotation(app.id) ?: ""
+
+    val input = EditText(this).apply {
+        setText(currentAnnotation)
+        setTextColor(ThemeUtils.getTextColor())
+        setHintTextColor(ThemeUtils.getSecondaryTextColor())
+        hint = "Why did you install this app?"
+        setBackgroundColor(Color.TRANSPARENT)
+        setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
+        minLines = 1
+        maxLines = 3
+    }
+
+    val dialog = MaterialAlertDialogBuilder(this)
+        .setTitle("Annotate ${app.label}")
+        .setView(input)
+        .setPositiveButton("Save") { _, _ ->
+            val text = input.text?.toString()?.trim() ?: ""
+            Prefs.setAppAnnotation(app.id, text)
+            onSaved()
+        }
+        .setNegativeButton("Cancel") { _, _ ->
+            onSaved()
+        }
+        .create()
+
+    dialog.setOnShowListener {
+        input.requestFocus()
+        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+    }
+
+    dialog.show()
 }
 
 private fun MainActivity.forgetLink(app: AppInfo) {
