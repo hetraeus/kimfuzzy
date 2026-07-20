@@ -339,9 +339,11 @@ private fun MainActivity.showBookmarkOptions(app: AppInfo) {
         setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(8))
     }
 
-    // App name (big)
+    // App name (big) — use original app name, not custom label
+    val originalApp = allApps.find { it.id == app.id }
+    val displayName = originalApp?.label ?: app.label
     val nameView = TextView(this).apply {
-        text = app.label
+        text = displayName
         setTextColor(textColor)
         textSize = 20f
         setPadding(0, 0, 0, dpToPx(12))

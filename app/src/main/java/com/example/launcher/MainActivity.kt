@@ -309,11 +309,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     internal fun setupKeyboardListener() {
-        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
 
-            view.setPadding(
+            // Apply insets padding to mainContent so the wallpaper stays
+            // edge-to-edge behind status bar and navigation bar
+            binding.mainContent.setPadding(
                 systemBars.left,
                 systemBars.top,
                 systemBars.right,
