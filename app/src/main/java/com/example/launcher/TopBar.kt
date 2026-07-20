@@ -29,7 +29,8 @@ internal fun MainActivity.applyThemeColors() {
     val accent = ThemeUtils.getAccentColor(this)
 
     binding.root.setBackgroundColor(bg)
-    binding.topBar.setBackgroundColor(bg)
+    // Top bar is transparent so the wallpaper shows through behind it
+    binding.topBar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
 
     binding.dateText.setTextColor(text)
     // Alarm text made darker using a more muted/darker secondary color

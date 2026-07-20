@@ -322,6 +322,15 @@ class MainActivity : AppCompatActivity() {
                 if (ime.bottom > 0) ime.bottom else systemBars.bottom
             )
 
+            // Settings view also needs top padding so its close button
+            // aligns with the settings button in the padded topBar
+            binding.settingsView.setPadding(
+                systemBars.left,
+                systemBars.top,
+                systemBars.right,
+                if (ime.bottom > 0) ime.bottom else systemBars.bottom
+            )
+
             val wasVisible = isKeyboardVisible
             isKeyboardVisible = ime.bottom > systemBars.bottom
 
