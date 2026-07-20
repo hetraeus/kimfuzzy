@@ -90,99 +90,102 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    internal val bookmarkDragListener = object : BookmarkAdapter.DragListener {
-        override fun onDragStart(
-            holder: BookmarkAdapter.ViewHolder,
-            app: AppInfo,
-            touchX: Float,
-            touchY: Float
-        ) {
-            dragSourcePos = holder.bindingAdapterPosition
-            if (dragSourcePos == RecyclerView.NO_POSITION) return
+    internal fun createBookmarkDragListener(): BookmarkAdapter.DragListener {
+        val activity = this
+        return object : BookmarkAdapter.DragListener {
+            override fun onDragStart(
+                holder: BookmarkAdapter.ViewHolder,
+                app: AppInfo,
+                touchX: Float,
+                touchY: Float
+            ) {
+                dragSourcePos = holder.bindingAdapterPosition
+                if (dragSourcePos == RecyclerView.NO_POSITION) return
 
-            draggedApp = app
-            dragTouchOffsetX = touchX
-            dragTouchOffsetY = touchY
+                draggedApp = app
+                dragTouchOffsetX = touchX
+                dragTouchOffsetY = touchY
 
-            val floatBinding = ItemBookmarkBinding.inflate(layoutInflater)
-            floatBinding.name.text = app.label
-            floatBinding.name.setTextColor(ThemeUtils.getTextColor())
-            IconSize.apply(floatBinding.icon, app.icon, app.iconFromPack)
+                val floatBinding = ItemBookmarkBinding.inflate(layoutInflater)
+                floatBinding.name.text = app.label
+                floatBinding.name.setTextColor(ThemeUtils.getTextColor())
+                IconSize.apply(floatBinding.icon, app.icon, app.iconFromPack)
 
-            val view = floatBinding.root
-            view.measure(
-                View.MeasureSpec.makeMeasureSpec(holder.binding.root.width, View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(holder.binding.root.height, View.MeasureSpec.EXACTLY)
-            )
-            view.layout(0, 0, view.measuredWidth, view.measuredHeight)
+                val view = floatBinding.root
+                view.measure(
+                    View.MeasureSpec.makeMeasureSpec(holder.binding.root.width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(holder.binding.root.height, View.MeasureSpec.EXACTLY)
+                )
+                view.layout(0, 0, view.measuredWidth, view.measuredHeight)
 
-            val loc = IntArray(2)
-            holder.binding.root.getLocationOnScreen(loc)
+                val loc = IntArray(2)
+                holder.binding.root.getLocationOnScreen(loc)
 
-            val contentLoc = IntArray(2)
-            binding.contentArea.getLocationOnScreen(contentLoc)
+                val contentLoc = IntArray(2)
+                binding.contentArea.getLocationOnScreen(contentLoc)
 
-            val params = FrameLayout.LayoutParams(view.measuredWidth, view.measuredHeight)
-            params.leftMargin = loc[0] - contentLoc[0]
-            params.topMargin = loc[1] - contentLoc[1]
+                val params = FrameLayout.LayoutParams(view.measuredWidth, view.measuredHeight)
+                params.leftMargin = loc[0] - contentLoc[0]
+                params.topMargin = loc[1] - contentLoc[1]
 
-            binding.contentArea.addView(view, params)
-            floatingView = view
+                binding.contentArea.addView(view, params)
+                floatingView = view
 
-            holder.binding.root.visibility = View.INVISIBLE
-        }
+                holder.binding.root.visibility = View.INVISIBLE
+            }
 
-        override fun onDragMove(rawX: Float, rawY: Float) {
-            val view = floatingView ?: return
-            val contentLoc = IntArray(2)
-            binding.contentArea.getLocationOnScreen(contentLoc)
+            override fun onDragMove(rawX: Float, rawY: Float) {
+                val view = floatingView ?: return
+                val contentLoc = IntArray(2)
+                binding.contentArea.getLocationOnScreen(contentLoc)
 
-            val params = view.layoutParams as FrameLayout.LayoutParams
-            params.leftMargin = (rawX - dragTouchOffsetX - contentLoc[0]).toInt()
-            params.topMargin = (rawY - dragTouchOffsetY - contentLoc[1]).toInt()
-            view.layoutParams = params
-        }
+                val params = view.layoutParams as FrameLayout.LayoutParams
+                params.leftMargin = (rawX - dragTouchOffsetX - contentLoc[0]).toInt()
+                params.topMargin = (rawY - dragTouchOffsetY - contentLoc[1]).toInt()
+                view.layoutParams = params
+            }
 
-        override fun onDragEnd(rawX: Float, rawY: Float) {
-            floatingView?.let { binding.contentArea.removeView(it) }
-            floatingView = null
+            override fun onDragEnd(rawX: Float, rawY: Float) {
+                floatingView?.let { binding.contentArea.removeView(it) }
+                floatingView = null
 
-            val dropZoneLoc = IntArray(2)
-            binding.dropZone.getLocationOnScreen(dropZoneLoc)
-            val dropZoneHeight = binding.dropZone.height
-            if (dropZoneHeight > 0 && rawY >= dropZoneLoc[1] && rawY <= dropZoneLoc[1] + dropZoneHeight) {
-                if (dragSourcePos != -1 && draggedApp != null) {
-                    Prefs.removeBookmark(draggedApp!!.id)
-                    loadBookmarks()
-                    Toast.makeText(this@MainActivity, "Hidden: ${draggedApp!!.label}", Toast.LENGTH_SHORT).show()
+                val dropZoneLoc = IntArray(2)
+                binding.dropZone.getLocationOnScreen(dropZoneLoc)
+                val dropZoneHeight = binding.dropZone.height
+                if (dropZoneHeight > 0 && rawY >= dropZoneLoc[1] && rawY <= dropZoneLoc[1] + dropZoneHeight) {
+                    if (dragSourcePos != -1 && draggedApp != null) {
+                        Prefs.removeBookmark(draggedApp!!.id)
+                        loadBookmarks()
+                        Toast.makeText(activity, "Hidden: ${draggedApp!!.label}", Toast.LENGTH_SHORT).show()
+                    }
+                    dragSourcePos = -1
+                    draggedApp = null
+                    return
+                }
+
+                val rvLoc = IntArray(2)
+                binding.bookmarksGrid.getLocationOnScreen(rvLoc)
+                val dropX = rawX - rvLoc[0]
+                val dropY = rawY - rvLoc[1]
+                val child = binding.bookmarksGrid.findChildViewUnder(dropX, dropY)
+                val targetPos = if (child != null) binding.bookmarksGrid.getChildAdapterPosition(child) else -1
+
+                if (targetPos != -1 && targetPos != dragSourcePos && dragSourcePos != -1) {
+                    val mutable = bookmarkAdapter.getItems().toMutableList()
+                    if (mutable[targetPos] == null) {
+                        mutable[targetPos] = mutable[dragSourcePos]
+                        mutable[dragSourcePos] = null
+                        bookmarkAdapter.submitList(mutable)
+                        Prefs.saveBookmarks(mutable.map { it?.id ?: "" })
+                    } else {
+                        bookmarkAdapter.notifyItemChanged(dragSourcePos)
+                    }
+                } else {
+                    if (dragSourcePos != -1) bookmarkAdapter.notifyItemChanged(dragSourcePos)
                 }
                 dragSourcePos = -1
                 draggedApp = null
-                return
             }
-
-            val rvLoc = IntArray(2)
-            binding.bookmarksGrid.getLocationOnScreen(rvLoc)
-            val dropX = rawX - rvLoc[0]
-            val dropY = rawY - rvLoc[1]
-            val child = binding.bookmarksGrid.findChildViewUnder(dropX, dropY)
-            val targetPos = if (child != null) binding.bookmarksGrid.getChildAdapterPosition(child) else -1
-
-            if (targetPos != -1 && targetPos != dragSourcePos && dragSourcePos != -1) {
-                val mutable = bookmarkAdapter.getItems().toMutableList()
-                if (mutable[targetPos] == null) {
-                    mutable[targetPos] = mutable[dragSourcePos]
-                    mutable[dragSourcePos] = null
-                    bookmarkAdapter.submitList(mutable)
-                    Prefs.saveBookmarks(mutable.map { it?.id ?: "" })
-                } else {
-                    bookmarkAdapter.notifyItemChanged(dragSourcePos)
-                }
-            } else {
-                if (dragSourcePos != -1) bookmarkAdapter.notifyItemChanged(dragSourcePos)
-            }
-            dragSourcePos = -1
-            draggedApp = null
         }
     }
 
@@ -265,6 +268,7 @@ class MainActivity : AppCompatActivity() {
         binding.bookmarksGrid.visibility = View.VISIBLE
         binding.appList.visibility = View.GONE
         binding.emptyState.visibility = View.GONE
+        binding.settingsView.visibility = View.GONE
         loadBookmarks()
         applyBlackCurtainState()
     }
@@ -290,6 +294,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+    internal fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
+
 
     internal fun showKeyboard() {
         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -326,12 +333,11 @@ class MainActivity : AppCompatActivity() {
 
     internal fun onKeyboardVisibilityChanged() {}
 
-    internal fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
-
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        if (binding.filterContainer.visibility == View.VISIBLE || isKeyboardVisible) {
-            resetToBookmarks()
+        when {
+            binding.settingsView.visibility == View.VISIBLE -> resetToBookmarks()
+            binding.filterContainer.visibility == View.VISIBLE || isKeyboardVisible -> resetToBookmarks()
         }
     }
 }

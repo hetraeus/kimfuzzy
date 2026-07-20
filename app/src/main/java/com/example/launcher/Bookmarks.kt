@@ -119,7 +119,7 @@ internal fun MainActivity.createBookmarkDragListener(): BookmarkAdapter.DragList
 internal fun MainActivity.setupBookmarks() {
     bookmarkAdapter = BookmarkAdapter(
         onRename = { app -> renameBookmark(app) },
-        dragListener = if (Prefs.getEditMode()) bookmarkDragListener else null
+        dragListener = if (Prefs.getEditMode()) createBookmarkDragListener() else null
     )
     val activity = this
     binding.bookmarksGrid.apply {

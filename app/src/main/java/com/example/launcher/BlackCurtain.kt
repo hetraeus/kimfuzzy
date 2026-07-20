@@ -14,7 +14,7 @@ import kotlin.math.abs
 
 internal fun MainActivity.setupBlackCurtain() {
     binding.curtainSettingsBtn.setOnClickListener {
-        showSettingsDialog()
+        showSettingsView()
     }
 
     val swipeThreshold = 60f * resources.displayMetrics.density

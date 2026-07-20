@@ -5,65 +5,132 @@ import android.content.Intent
 import android.graphics.Color
 import android.provider.Settings
 import android.view.View
+import android.view.WindowManager
 import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
-/** Everything reachable from the settings (⚙) button. */
+/** Full-screen settings view reachable from the settings (𑁍) button. */
 
 internal fun MainActivity.setupSettings() {
     binding.settingsBtn.setOnClickListener {
-        showSettingsDialog()
+        if (binding.settingsView.visibility == View.VISIBLE) {
+            resetToBookmarks()
+        } else {
+            showSettingsView()
+        }
+    }
+
+    binding.closeSettingsBtn.setOnClickListener {
+        resetToBookmarks()
     }
 }
 
-internal fun MainActivity.showSettingsDialog() {
-    val editMode = Prefs.getEditMode()
-    val editLabel = if (editMode) "💮 Lock bookmarks" else "✏️ Edit bookmarks"
-    val curtainOn = Prefs.getBlackCurtain()
-    val curtainLabel = if (curtainOn) "⚫ Disable Black Curtain" else "⚫ Enable Black Curtain"
-    val options = arrayOf("Theme", "Icon Size", "Icon Pack", "Background Image", editLabel, curtainLabel, "Export settings", "Import settings", "Set as Default Launcher")
+internal fun MainActivity.showSettingsView() {
+    binding.blackCurtain.visibility = View.GONE
+    binding.bookmarksGrid.visibility = View.GONE
+    binding.filterContainer.visibility = View.GONE
+    binding.appList.visibility = View.GONE
+    binding.settingsView.visibility = View.VISIBLE
 
-    MaterialAlertDialogBuilder(this)
-        .setTitle("Settings")
-        .setItems(options) { _, which ->
-            when (which) {
-                0 -> showThemePicker()
-                1 -> showIconSizePicker()
-                2 -> showIconPackPicker()
-                3 -> showBackgroundImagePicker()
-                4 -> {
-                    Prefs.setEditMode(!editMode)
-                    updateEditModeIcon()
-                    binding.dropZone.visibility = if (Prefs.getEditMode()) View.VISIBLE else View.GONE
-                    bookmarkAdapter = BookmarkAdapter(
-                        onRename = { app -> renameBookmark(app) },
-                        dragListener = if (Prefs.getEditMode()) bookmarkDragListener else null
-                    )
-                    binding.bookmarksGrid.adapter = bookmarkAdapter
-                    loadBookmarks()
-                    Toast.makeText(
-                        this,
-                        if (!editMode) "✏️ Edit mode enabled" else "💮 Locked mode enabled",
-                        Toast.LENGTH_SHORT
-                    ).show()
+    buildSettingsOptions()
+    applySettingsThemeColors()
+}
+
+private fun MainActivity.applySettingsThemeColors() {
+    val bg = ThemeUtils.getBackgroundColor()
+    val text = ThemeUtils.getTextColor()
+
+    binding.settingsView.setBackgroundColor(bg)
+    binding.settingsTitle.setTextColor(text)
+    binding.closeSettingsBtn.setTextColor(text)
+}
+
+private fun MainActivity.buildSettingsOptions() {
+    val container = binding.settingsOptionsContainer
+    container.removeAllViews()
+
+    val editMode = Prefs.getEditMode()
+    val curtainOn = Prefs.getBlackCurtain()
+
+    val options = listOf(
+        "Theme" to { showThemePicker() },
+        "Icon Size" to { showIconSizePicker() },
+        "Icon Pack" to { showIconPackPicker() },
+        "Background Image" to { showBackgroundImagePicker() },
+        (if (editMode) "💮 Lock bookmarks" else "✏️ Edit bookmarks") to { toggleEditMode() },
+        (if (curtainOn) "⚫ Disable Black Curtain" else "⚫ Enable Black Curtain") to { toggleBlackCurtain() },
+        "Export settings" to { exportSettings() },
+        "Import settings" to { importSettings() },
+        "Set as Default Launcher" to { promptSetDefaultLauncher() }
+    )
+
+    val textColor = ThemeUtils.getTextColor()
+    val accent = ThemeUtils.getAccentColor(this)
+
+    for ((label, action) in options) {
+        val item = TextView(this).apply {
+            text = label
+            setTextColor(if (label.startsWith("Set as")) accent else textColor)
+            textSize = 16f
+            setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
+            setBackgroundColor(Color.parseColor("#08FFFFFF"))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                action()
+                // Rebuild options in case state changed (e.g., edit mode toggled)
+                if (label.startsWith("💮") || label.startsWith("✏️") ||
+                    label.startsWith("⚫")) {
+                    buildSettingsOptions()
                 }
-                5 -> {
-                    Prefs.setBlackCurtain(!curtainOn)
-                    applyBlackCurtainState()
-                    Toast.makeText(
-                        this,
-                        if (!curtainOn) "⚫ Black Curtain enabled" else "☀️ Black Curtain disabled",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-                6 -> exportSettings()
-                7 -> importSettings()
-                8 -> promptSetDefaultLauncher()
             }
         }
-        .setNegativeButton("Close", null)
-        .show()
+        container.addView(item)
+
+        // Divider
+        val divider = View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dpToPx(1)
+            ).apply {
+                setMargins(dpToPx(16), 0, dpToPx(16), 0)
+            }
+            setBackgroundColor(ThemeUtils.getSecondaryTextColor())
+        }
+        container.addView(divider)
+    }
+}
+
+private fun MainActivity.toggleEditMode() {
+    val editMode = Prefs.getEditMode()
+    Prefs.setEditMode(!editMode)
+    updateEditModeIcon()
+    binding.dropZone.visibility = if (Prefs.getEditMode()) View.VISIBLE else View.GONE
+    bookmarkAdapter = BookmarkAdapter(
+        onRename = { app -> renameBookmark(app) },
+        dragListener = if (Prefs.getEditMode()) createBookmarkDragListener() else null
+    )
+    binding.bookmarksGrid.adapter = bookmarkAdapter
+    loadBookmarks()
+    Toast.makeText(
+        this,
+        if (!editMode) "✏️ Edit mode enabled" else "💮 Locked mode enabled",
+        Toast.LENGTH_SHORT
+    ).show()
+}
+
+private fun MainActivity.toggleBlackCurtain() {
+    val curtainOn = Prefs.getBlackCurtain()
+    Prefs.setBlackCurtain(!curtainOn)
+    applyBlackCurtainState()
+    Toast.makeText(
+        this,
+        if (!curtainOn) "⚫ Black Curtain enabled" else "☀️ Black Curtain disabled",
+        Toast.LENGTH_SHORT
+    ).show()
 }
 
 private fun MainActivity.showBackgroundImagePicker() {
