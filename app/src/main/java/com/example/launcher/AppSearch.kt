@@ -122,25 +122,28 @@ internal fun MainActivity.filterApps(query: String) {
         allApps.filterNot { it.prefix.equals("zzz", ignoreCase = true) }
     }
 
-    if (query.isEmpty()) {
-        appAdapter.submitList(visibleApps)
-        binding.emptyState.visibility = View.GONE
-        binding.appStoresLookup.visibility = View.GONE
-        return
-    }
-
-    val scored = visibleApps.map { app ->
-        val displayScore = FzfScorer.score(query, app.displayName)
-        val labelScore = FzfScorer.score(query, app.label)
-        val base = maxOf(displayScore, labelScore)
-        val lastLaunch = Prefs.getLastLaunchTime(app.id)
-        Triple(app, base, lastLaunch)
-    }.filter { it.second > 0 }
-    .sortedWith(
-        compareByDescending<Triple<AppInfo, Int, Long>> { it.second }
-            .thenByDescending { it.third }
-    )
-    .map { it.first }
+    val scored = if (query.isEmpty()) {
+        visibleApps.map { app ->
+            val score = if (Prefs.isPinned(app.id)) 1 else 0
+            val lastLaunch = Prefs.getLastLaunchTime(app.id)
+            Triple(app, score, lastLaunch)
+        }.sortedWith(
+            compareByDescending<Triple<AppInfo, Int, Long>> { it.second }
+                .thenByDescending { it.third }
+        )
+    } else {
+        visibleApps.map { app ->
+            val displayScore = FzfScorer.score(query, app.displayName)
+            val labelScore = FzfScorer.score(query, app.label)
+            val base = maxOf(displayScore, labelScore)
+            val lastLaunch = Prefs.getLastLaunchTime(app.id)
+            Triple(app, base, lastLaunch)
+        }.filter { it.second > 0 }
+        .sortedWith(
+            compareByDescending<Triple<AppInfo, Int, Long>> { it.second }
+                .thenByDescending { it.third }
+        )
+    }.map { it.first }
 
     appAdapter.submitList(scored)
 
@@ -171,6 +174,7 @@ internal fun MainActivity.launchApp(app: AppInfo) {
 private fun MainActivity.showAppOptions(app: AppInfo) {
     val isBookmarked = Prefs.isBookmarked(app.id)
     val isShortcut = app.shortcutId != null
+
     val textColor = ThemeUtils.getTextColor()
     val accent = ThemeUtils.getAccentColor(this)
     val secondaryText = ThemeUtils.getSecondaryTextColor()
@@ -196,8 +200,6 @@ private fun MainActivity.showAppOptions(app: AppInfo) {
     }
     contentView.addView(annotationContainer)
 
-    var dialogRef: androidx.appcompat.app.AlertDialog? = null
-
     fun buildAnnotationSection() {
         annotationContainer.removeAllViews()
         val currentAnnotation = Prefs.getAppAnnotation(app.id)
@@ -211,10 +213,7 @@ private fun MainActivity.showAppOptions(app: AppInfo) {
                 maxLines = 3
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 setPadding(0, 0, 0, dpToPx(12))
-                setOnClickListener {
-                    dialogRef?.dismiss()
-                    showAnnotationEdit(app, ::buildAnnotationSection)
-                }
+                setOnClickListener { showAnnotationEdit(app, annotationContainer, ::buildAnnotationSection) }
             }
             annotationContainer.addView(annotationView)
         } else {
@@ -224,10 +223,7 @@ private fun MainActivity.showAppOptions(app: AppInfo) {
                 setTextColor(accent)
                 textSize = 14f
                 setPadding(0, 0, 0, dpToPx(12))
-                setOnClickListener {
-                    dialogRef?.dismiss()
-                    showAnnotationEdit(app, ::buildAnnotationSection)
-                }
+                setOnClickListener { showAnnotationEdit(app, annotationContainer, ::buildAnnotationSection) }
             }
             annotationContainer.addView(annotatePrompt)
         }
@@ -252,12 +248,15 @@ private fun MainActivity.showAppOptions(app: AppInfo) {
     contentView.addView(actionsContainer)
 
     val bookmarkAction = if (isBookmarked) "Hide bookmark" else "Add bookmark"
+    val pinAction = if (Prefs.isPinned(app.id)) "Unpin from top" else "Pin to top"
     val actions = listOf(
+        pinAction to { Prefs.togglePin(app.id); Toast.makeText(this, if (Prefs.isPinned(app.id)) "Pinned" else "Unpinned", Toast.LENGTH_SHORT).show() },
         bookmarkAction to { toggleBookmark(app) },
         "Edit suffix" to { editPrefix(app) },
         if (isShortcut) "Forget link" to { forgetLink(app) } else "App info" to { showAppInfo(app) }
     )
 
+    lateinit var dialogRef: androidx.appcompat.app.AlertDialog
     for ((label, action) in actions) {
         val btn = TextView(this).apply {
             text = label
@@ -265,7 +264,7 @@ private fun MainActivity.showAppOptions(app: AppInfo) {
             textSize = 16f
             setPadding(0, dpToPx(12), 0, dpToPx(12))
             setOnClickListener {
-                dialogRef?.dismiss()
+                dialogRef.dismiss()
                 action()
             }
         }
@@ -280,39 +279,65 @@ private fun MainActivity.showAppOptions(app: AppInfo) {
     dialog.show()
 }
 
-private fun MainActivity.showAnnotationEdit(app: AppInfo, onSaved: () -> Unit) {
+private fun MainActivity.showAnnotationEdit(
+    app: AppInfo,
+    container: LinearLayout,
+    onSaved: () -> Unit
+) {
+    container.removeAllViews()
+
+    val textColor = ThemeUtils.getTextColor()
+    val accent = ThemeUtils.getAccentColor(this)
+    val secondaryText = ThemeUtils.getSecondaryTextColor()
+
     val currentAnnotation = Prefs.getAppAnnotation(app.id) ?: ""
 
     val input = EditText(this).apply {
         setText(currentAnnotation)
-        setTextColor(ThemeUtils.getTextColor())
-        setHintTextColor(ThemeUtils.getSecondaryTextColor())
+        setTextColor(textColor)
+        setHintTextColor(secondaryText)
         hint = "Why did you install this app?"
         setBackgroundColor(Color.TRANSPARENT)
-        setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
-        minLines = 1
         maxLines = 3
+        minLines = 1
+        gravity = android.view.Gravity.TOP
+        setPadding(0, dpToPx(8), 0, dpToPx(8))
     }
+    container.addView(input)
 
-    val dialog = MaterialAlertDialogBuilder(this)
-        .setTitle("Annotate ${app.label}")
-        .setView(input)
-        .setPositiveButton("Save") { _, _ ->
+    val btnRow = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = android.view.Gravity.END
+    }
+    container.addView(btnRow)
+
+    val saveBtn = TextView(this).apply {
+        text = "Save"
+        setTextColor(accent)
+        textSize = 14f
+        setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
+        setOnClickListener {
             val text = input.text?.toString()?.trim() ?: ""
             Prefs.setAppAnnotation(app.id, text)
             onSaved()
         }
-        .setNegativeButton("Cancel") { _, _ ->
+    }
+    btnRow.addView(saveBtn)
+
+    val cancelBtn = TextView(this).apply {
+        text = "Cancel"
+        setTextColor(secondaryText)
+        textSize = 14f
+        setPadding(dpToPx(16), dpToPx(8), 0, dpToPx(8))
+        setOnClickListener {
             onSaved()
         }
-        .create()
-
-    dialog.setOnShowListener {
-        input.requestFocus()
-        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
     }
+    btnRow.addView(cancelBtn)
 
-    dialog.show()
+    input.requestFocus()
+    val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+    imm.showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
 }
 
 private fun MainActivity.forgetLink(app: AppInfo) {

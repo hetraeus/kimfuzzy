@@ -8,13 +8,15 @@ object FzfScorer {
         val q = query.lowercase().trim()
         val t = text.lowercase()
 
-        // If query contains spaces, treat as multi-word: score each word and sum
+        // If query contains spaces, treat as multi-word: every word must match
         if (q.contains(' ')) {
-            val words = q.split(' ')
+            val words = q.split(' ').filter { it.isNotBlank() }
+            if (words.isEmpty()) return Int.MAX_VALUE
             var totalScore = 0
             for (word in words) {
-                if (word.isBlank()) continue
-                totalScore += scoreSingle(word, t)
+                val wordScore = scoreSingle(word, t)
+                if (wordScore == 0) return 0  // ALL words must match somewhere
+                totalScore += wordScore
             }
             return totalScore
         }

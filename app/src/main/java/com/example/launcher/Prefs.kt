@@ -60,6 +60,24 @@ object Prefs {
         }
     }
 
+    // ── Pinned Apps ────────────────────────────────────────────────────
+    fun getPinnedApps(): Set<String> {
+        val str = prefs.getString("pinned_apps", "") ?: ""
+        return if (str.isEmpty()) emptySet() else str.split(",").toSet()
+    }
+
+    fun isPinned(id: String): Boolean = id in getPinnedApps()
+
+    fun togglePin(id: String) {
+        val set = getPinnedApps().toMutableSet()
+        if (set.contains(id)) {
+            set.remove(id)
+        } else {
+            set.add(id)
+        }
+        prefs.edit().putString("pinned_apps", set.joinToString(",")).apply()
+    }
+
 
     fun getCustomLabel(id: String): String? {
         if (!prefs.contains("label_$id")) {
@@ -153,6 +171,9 @@ object Prefs {
                     val id = key.removePrefix("annotation_")
                     annotations.put(id, prefs.getString(key, ""))
                 }
+                key == "pinned_apps" -> {
+                    root.put("pinned_apps", prefs.getString(key, ""))
+                }
             }
         }
         root.put("prefixes", prefixes)
@@ -179,7 +200,7 @@ object Prefs {
             }
 
             for (key in prefs.all.keys) {
-                if (key.startsWith("prefix_") || key.startsWith("label_") || key.startsWith("annotation_")) {
+                if (key.startsWith("prefix_") || key.startsWith("label_") || key.startsWith("annotation_") || key == "pinned_apps") {
                     editor.remove(key)
                 }
             }
@@ -209,6 +230,11 @@ object Prefs {
                     val id = keys.next()
                     editor.putString("annotation_$id", annotations.getString(id))
                 }
+            }
+
+            val pinned = root.optString("pinned_apps", "")
+            if (pinned.isNotEmpty()) {
+                editor.putString("pinned_apps", pinned)
             }
 
             editor.apply()
