@@ -29,6 +29,7 @@ internal fun MainActivity.setupSettings() {
 }
 
 internal fun MainActivity.showSettingsView() {
+    hideKeyboard()
     binding.blackCurtain.visibility = View.GONE
     binding.bookmarksGrid.visibility = View.GONE
     binding.filterContainer.visibility = View.GONE
@@ -56,7 +57,6 @@ private fun MainActivity.buildSettingsOptions() {
     val curtainOn = Prefs.getBlackCurtain()
 
     val options = listOf(
-        "Overview" to { showOverview() },
         "Theme" to { showThemePicker() },
         "Icon Size" to { showIconSizePicker() },
         "Icon Pack" to { showIconPackPicker() },
@@ -178,57 +178,6 @@ private fun MainActivity.importSettings() {
             }
         }
         .setNegativeButton("Cancel", null)
-        .show()
-}
-
-private fun MainActivity.showOverview() {
-    val textColor = ThemeUtils.getTextColor()
-    val secondaryText = ThemeUtils.getSecondaryTextColor()
-
-    val scrollView = android.widget.ScrollView(this).apply {
-        setPadding(dpToPx(24), dpToPx(8), dpToPx(24), dpToPx(8))
-    }
-
-    val content = android.widget.LinearLayout(this).apply {
-        orientation = android.widget.LinearLayout.VERTICAL
-    }
-    scrollView.addView(content)
-
-    val sections = listOf(
-        "Bookmarks" to "Swipe up on the bottom grid to open search. Long-press any bookmark to rename, annotate, or hide it. Tap ✏️ Edit bookmarks to drag and reorder.",
-        "Search" to "Type to filter apps. The best match is shown first, boosted by how recently you opened it. Tap ▶ to launch the top result. Tap the empty-state link to search app stores.",
-        "Hide apps" to "Type 'zzz' in the search box to reveal every app, including hidden ones. To hide an app, long-press it in search and pick Edit suffix, then set it to 'zzz'.",
-        "Annotations" to "Long-press any app (bookmark or search result) and tap Annotate to leave a note for yourself — why you installed it, what it does, etc.",
-        "Black Curtain" to "Enable it in settings for distraction-free viewing. Swipe up to exit. A dim settings button stays reachable.",
-        "Wallpaper" to "Pick any image as your background. It shows edge-to-edge, behind the status bar, top bar, and navigation bar.",
-        "Icon packs" to "Install any standard icon pack from the Play Store or F-Droid and apply it here. The launcher auto-detects supported packs.",
-        "Backup" to "Export copies your layout, labels, annotations, and preferences as JSON to the clipboard. Import pastes it back. No cloud needed."
-    )
-
-    for ((title, body) in sections) {
-        val titleView = android.widget.TextView(this).apply {
-            text = title
-            setTextColor(textColor)
-            textSize = 16f
-            setPadding(0, dpToPx(12), 0, dpToPx(4))
-            setTypeface(null, android.graphics.Typeface.BOLD)
-        }
-        content.addView(titleView)
-
-        val bodyView = android.widget.TextView(this).apply {
-            text = body
-            setTextColor(secondaryText)
-            textSize = 14f
-            setPadding(0, 0, 0, dpToPx(8))
-            setTextIsSelectable(true)
-        }
-        content.addView(bodyView)
-    }
-
-    MaterialAlertDialogBuilder(this)
-        .setTitle("Overview")
-        .setView(scrollView)
-        .setPositiveButton("Got it", null)
         .show()
 }
 
