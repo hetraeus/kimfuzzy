@@ -1,4 +1,4 @@
-package com.example.launcher
+package io.github.hetraeus.kimfuzzy
 
 import android.app.AlarmManager
 import android.content.BroadcastReceiver
@@ -34,8 +34,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.launcher.databinding.ActivityMainBinding
-import com.example.launcher.databinding.ItemBookmarkBinding
+import io.github.hetraeus.kimfuzzy.databinding.ActivityMainBinding
+import io.github.hetraeus.kimfuzzy.databinding.ItemBookmarkBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

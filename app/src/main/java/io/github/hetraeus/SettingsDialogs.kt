@@ -1,8 +1,9 @@
-package com.example.launcher
+package io.github.hetraeus.kimfuzzy
 
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.net.Uri
 import android.provider.Settings
 import android.view.View
 import android.view.WindowManager
@@ -53,42 +54,68 @@ private fun MainActivity.buildSettingsOptions() {
     val container = binding.settingsOptionsContainer
     container.removeAllViews()
 
-    val editMode = Prefs.getEditMode()
-    val curtainOn = Prefs.getBlackCurtain()
-
-    val options = listOf(
-        (if (curtainOn) "⚫ Disable Black Curtain" else "⚫ Enable Black Curtain") to { toggleBlackCurtain() },
-        "Theme" to { showThemePicker() },
-        "Icon Size" to { showIconSizePicker() },
-        "Icon Pack" to { showIconPackPicker() },
-        "Background Image" to { showBackgroundImagePicker() },
-        (if (editMode) "💮 Lock bookmarks" else "✏️ Edit bookmarks") to { toggleEditMode() },
-        "Export settings" to { exportSettings() },
-        "Import settings" to { importSettings() },
-        "Set as Default Launcher" to { promptSetDefaultLauncher() }
-    )
-
     val textColor = ThemeUtils.getTextColor()
+    val secondaryText = ThemeUtils.getSecondaryTextColor()
+    val accent = ThemeUtils.getAccentColor(this)
 
-    for ((label, action) in options) {
+    // ── Overview ──────────────────────────────────────────────────────
+    val overview = TextView(this).apply {
+        text = "Customize appearance, manage bookmarks, and back up your launcher configuration."
+        setTextColor(secondaryText)
+        textSize = 13f
+        setPadding(dpToPx(16), dpToPx(4), dpToPx(16), dpToPx(16))
+    }
+    container.addView(overview)
+
+    fun sectionHeader(title: String) {
+        val header = TextView(this).apply {
+            text = title
+            setTextColor(accent)
+            textSize = 12f
+            setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(4))
+            setAllCaps(true)
+        }
+        container.addView(header)
+    }
+
+    fun optionItem(label: String, onClick: () -> Unit, rebuild: Boolean = false) {
         val item = TextView(this).apply {
             text = label
             setTextColor(textColor)
             textSize = 16f
-            setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
+            setPadding(dpToPx(16), dpToPx(14), dpToPx(16), dpToPx(14))
             isClickable = true
             isFocusable = true
             setOnClickListener {
-                action()
-                // Rebuild options in case state changed (e.g., edit mode toggled)
-                if (label.startsWith("💮") || label.startsWith("✏️") ||
-                    label.startsWith("⚫")) {
-                    buildSettingsOptions()
-                }
+                onClick()
+                if (rebuild) buildSettingsOptions()
             }
         }
         container.addView(item)
     }
+
+    val editMode = Prefs.getEditMode()
+    val curtainOn = Prefs.getBlackCurtain()
+
+    sectionHeader("Appearance")
+    optionItem(if (curtainOn) "⚫ Disable Black Curtain" else "⚫ Enable Black Curtain", { toggleBlackCurtain() }, true)
+    optionItem("Theme", { showThemePicker() })
+    optionItem("Icon Size", { showIconSizePicker() })
+    optionItem("Icon Pack", { showIconPackPicker() })
+    optionItem("Background Image", { showBackgroundImagePicker() })
+
+    sectionHeader("Bookmarks")
+    optionItem(if (editMode) "💮 Lock bookmarks" else "✏️ Edit bookmarks", { toggleEditMode() }, true)
+
+    sectionHeader("Data")
+    optionItem("Export settings", { exportSettings() })
+    optionItem("Import settings", { importSettings() })
+
+    sectionHeader("System")
+    optionItem("Set as Default Launcher", { promptSetDefaultLauncher() })
+
+    sectionHeader("Info")
+    optionItem("About", { showAboutDialog() })
 }
 
 private fun MainActivity.toggleEditMode() {
@@ -267,5 +294,70 @@ private fun MainActivity.promptSetDefaultLauncher() {
             startActivity(Intent(Settings.ACTION_HOME_SETTINGS))
         }
         .setNegativeButton("Later", null)
+        .show()
+}
+
+private fun MainActivity.showAboutDialog() {
+    val textColor = ThemeUtils.getTextColor()
+    val accent = ThemeUtils.getAccentColor(this)
+    val secondaryText = ThemeUtils.getSecondaryTextColor()
+
+    val contentView = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(8))
+    }
+
+    val titleView = TextView(this).apply {
+        text = "KimFuzzy"
+        setTextColor(textColor)
+        textSize = 22f
+        setPadding(0, 0, 0, dpToPx(4))
+    }
+    contentView.addView(titleView)
+
+    val devView = TextView(this).apply {
+        text = "Developer: hetraeus"
+        setTextColor(secondaryText)
+        textSize = 14f
+        setPadding(0, 0, 0, dpToPx(16))
+    }
+    contentView.addView(devView)
+
+    val divider = View(this).apply {
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            dpToPx(1)
+        ).apply { setMargins(0, 0, 0, dpToPx(8)) }
+        setBackgroundColor(secondaryText)
+    }
+    contentView.addView(divider)
+
+    val githubLink = TextView(this).apply {
+        text = "GitHub"
+        setTextColor(accent)
+        textSize = 16f
+        setPadding(0, dpToPx(12), 0, dpToPx(12))
+        setOnClickListener {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/pikachu/kimfuzzy"))
+            startActivity(intent)
+        }
+    }
+    contentView.addView(githubLink)
+
+    val licenseLink = TextView(this).apply {
+        text = "License: LGPL v3"
+        setTextColor(accent)
+        textSize = 16f
+        setPadding(0, dpToPx(12), 0, dpToPx(12))
+        setOnClickListener {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.gnu.org/licenses/lgpl-3.0.html"))
+            startActivity(intent)
+        }
+    }
+    contentView.addView(licenseLink)
+
+    MaterialAlertDialogBuilder(this)
+        .setView(contentView as android.view.View)
+        .setPositiveButton("Close", null)
         .show()
 }

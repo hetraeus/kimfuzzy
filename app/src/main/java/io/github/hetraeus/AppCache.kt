@@ -1,4 +1,4 @@
-package com.example.launcher
+package io.github.hetraeus.kimfuzzy
 
 import android.content.Context
 import android.graphics.Bitmap

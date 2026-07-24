@@ -1,8 +1,19 @@
+# Android
+*.iml
 .gradle/
 .idea/
-app/build/
 build/
-gradle/wrapper/gradle-wrapper.jar
-gradlew.bat
+app/build/
 local.properties
-*.iml
+*.apk
+*.aab
+
+# Kotlin
+*.class
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Nix
+.direnv/

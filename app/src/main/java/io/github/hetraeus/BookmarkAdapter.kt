@@ -1,11 +1,11 @@
-package com.example.launcher
+package io.github.hetraeus.kimfuzzy
 
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import com.example.launcher.databinding.ItemBookmarkBinding
+import io.github.hetraeus.kimfuzzy.databinding.ItemBookmarkBinding
 import kotlin.math.abs
 
 class BookmarkAdapter(

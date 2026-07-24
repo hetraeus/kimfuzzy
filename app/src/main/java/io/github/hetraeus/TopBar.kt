@@ -1,4 +1,4 @@
-package com.example.launcher
+package io.github.hetraeus.kimfuzzy
 
 import android.app.AlarmManager
 import android.content.Context

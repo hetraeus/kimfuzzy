@@ -1,4 +1,4 @@
-package com.example.launcher
+package io.github.hetraeus.kimfuzzy
 
 object FzfScorer {
     private val BOUNDARY_CHARS = charArrayOf(' ', '-', '_', '/', '\t')

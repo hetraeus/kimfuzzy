@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace 'com.example.launcher'
+    namespace 'io.github.hetraeus.kimfuzzy'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.example.launcher"
+        applicationId 'io.github.hetraeus.kimfuzzy'
         minSdk 26
         targetSdk 34
         versionCode 1

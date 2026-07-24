@@ -1,4 +1,4 @@
-package com.example.launcher
+package io.github.hetraeus.kimfuzzy
 
 import android.view.MotionEvent
 import android.view.View

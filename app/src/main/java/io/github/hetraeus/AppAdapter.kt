@@ -1,11 +1,11 @@
-package com.example.launcher
+package io.github.hetraeus.kimfuzzy
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.example.launcher.databinding.ItemAppBinding
+import io.github.hetraeus.kimfuzzy.databinding.ItemAppBinding
 
 class AppAdapter(
     private val onClick: (AppInfo) -> Unit,
