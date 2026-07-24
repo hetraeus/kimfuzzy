@@ -53,7 +53,7 @@ internal fun MainActivity.applyThemeColors() {
 }
 
 internal fun MainActivity.applyBackgroundImage() {
-    val bgUri = Prefs.getBackgroundImage()
+    val bgUri = Prefs.getBackgroundImage(Prefs.currentBackgroundBucket())
     if (bgUri != null) {
         try {
             val uri = Uri.parse(bgUri)
@@ -67,7 +67,7 @@ internal fun MainActivity.applyBackgroundImage() {
             }
         } catch (e: Exception) {
             binding.backgroundImage.setImageDrawable(null)
-            Prefs.setBackgroundImage(null)
+            Prefs.setBackgroundImage(Prefs.currentBackgroundBucket(), null)
         }
     } else {
         binding.backgroundImage.setImageDrawable(null)

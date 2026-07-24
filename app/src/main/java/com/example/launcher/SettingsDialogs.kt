@@ -57,24 +57,23 @@ private fun MainActivity.buildSettingsOptions() {
     val curtainOn = Prefs.getBlackCurtain()
 
     val options = listOf(
+        (if (curtainOn) "⚫ Disable Black Curtain" else "⚫ Enable Black Curtain") to { toggleBlackCurtain() },
         "Theme" to { showThemePicker() },
         "Icon Size" to { showIconSizePicker() },
         "Icon Pack" to { showIconPackPicker() },
         "Background Image" to { showBackgroundImagePicker() },
         (if (editMode) "💮 Lock bookmarks" else "✏️ Edit bookmarks") to { toggleEditMode() },
-        (if (curtainOn) "⚫ Disable Black Curtain" else "⚫ Enable Black Curtain") to { toggleBlackCurtain() },
         "Export settings" to { exportSettings() },
         "Import settings" to { importSettings() },
         "Set as Default Launcher" to { promptSetDefaultLauncher() }
     )
 
     val textColor = ThemeUtils.getTextColor()
-    val accent = ThemeUtils.getAccentColor(this)
 
     for ((label, action) in options) {
         val item = TextView(this).apply {
             text = label
-            setTextColor(if (label.startsWith("Set as")) accent else textColor)
+            setTextColor(textColor)
             textSize = 16f
             setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
             isClickable = true
@@ -122,25 +121,40 @@ private fun MainActivity.toggleBlackCurtain() {
 }
 
 private fun MainActivity.showBackgroundImagePicker() {
-    val currentUri = Prefs.getBackgroundImage()
-    val options = if (currentUri != null) {
-        arrayOf("Choose image", "Remove background")
-    } else {
-        arrayOf("Choose image")
+    val darkSet = Prefs.getBackgroundImage("dark") != null
+    val lightSet = Prefs.getBackgroundImage("light") != null
+
+    val items = mutableListOf<Pair<String, () -> Unit>>()
+
+    items.add((if (darkSet) "Change dark theme wallpaper" else "Set dark theme wallpaper") to {
+        pendingBackgroundBucket = "dark"
+        pickImageLauncher.launch(arrayOf("image/*"))
+    })
+    if (darkSet) {
+        items.add("Remove dark theme wallpaper" to {
+            Prefs.setBackgroundImage("dark", null)
+            applyBackgroundImage()
+            Toast.makeText(this, "Dark theme wallpaper removed", Toast.LENGTH_SHORT).show()
+        })
     }
+
+    items.add((if (lightSet) "Change light/sepia theme wallpaper" else "Set light/sepia theme wallpaper") to {
+        pendingBackgroundBucket = "light"
+        pickImageLauncher.launch(arrayOf("image/*"))
+    })
+    if (lightSet) {
+        items.add("Remove light/sepia theme wallpaper" to {
+            Prefs.setBackgroundImage("light", null)
+            applyBackgroundImage()
+            Toast.makeText(this, "Light/Sepia theme wallpaper removed", Toast.LENGTH_SHORT).show()
+        })
+    }
+
+    val labels = items.map { it.first }.toTypedArray()
 
     MaterialAlertDialogBuilder(this)
         .setTitle("Background Image")
-        .setItems(options) { _, which ->
-            when (options[which]) {
-                "Choose image" -> pickImageLauncher.launch(arrayOf("image/*"))
-                "Remove background" -> {
-                    Prefs.setBackgroundImage(null)
-                    binding.backgroundImage.setImageDrawable(null)
-                    Toast.makeText(this, "Background removed", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
+        .setItems(labels) { _, which -> items[which].second() }
         .setNegativeButton("Cancel", null)
         .show()
 }

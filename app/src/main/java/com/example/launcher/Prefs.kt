@@ -29,12 +29,17 @@ object Prefs {
     fun setBlackCurtain(enabled: Boolean) = prefs.edit().putBoolean("black_curtain", enabled).apply()
 
     // ── Background Image ───────────────────────────────────────────────
-    fun getBackgroundImage(): String? = prefs.getString("background_image", null)
-    fun setBackgroundImage(uri: String?) {
+    // Wallpapers are grouped into two buckets: "dark" for the dark theme,
+    // and "light" shared by both the light and sepia themes.
+    fun backgroundBucketForTheme(theme: String): String = if (theme == "dark") "dark" else "light"
+    fun currentBackgroundBucket(): String = backgroundBucketForTheme(getTheme())
+
+    fun getBackgroundImage(bucket: String): String? = prefs.getString("background_image_$bucket", null)
+    fun setBackgroundImage(bucket: String, uri: String?) {
         if (uri != null) {
-            prefs.edit().putString("background_image", uri).apply()
+            prefs.edit().putString("background_image_$bucket", uri).apply()
         } else {
-            prefs.edit().remove("background_image").apply()
+            prefs.edit().remove("background_image_$bucket").apply()
         }
     }
 
@@ -151,7 +156,8 @@ object Prefs {
         root.put("theme", getTheme())
         root.put("icon_size", getIconSize())
         root.put("icon_pack", getIconPack())
-        root.put("background_image", getBackgroundImage() ?: "")
+        root.put("background_image_dark", getBackgroundImage("dark") ?: "")
+        root.put("background_image_light", getBackgroundImage("light") ?: "")
         root.put("black_curtain", getBlackCurtain())
 
         val prefixes = JSONObject()
@@ -192,11 +198,18 @@ object Prefs {
             editor.putString("icon_pack", root.optString("icon_pack", ""))
             editor.putBoolean("black_curtain", root.optBoolean("black_curtain", false))
 
-            val bgImage = root.optString("background_image", "")
-            if (bgImage.isNotEmpty()) {
-                editor.putString("background_image", bgImage)
+            val bgDark = root.optString("background_image_dark", "")
+            if (bgDark.isNotEmpty()) {
+                editor.putString("background_image_dark", bgDark)
             } else {
-                editor.remove("background_image")
+                editor.remove("background_image_dark")
+            }
+
+            val bgLight = root.optString("background_image_light", "")
+            if (bgLight.isNotEmpty()) {
+                editor.putString("background_image_light", bgLight)
+            } else {
+                editor.remove("background_image_light")
             }
 
             for (key in prefs.all.keys) {

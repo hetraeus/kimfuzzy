@@ -62,11 +62,14 @@ class MainActivity : AppCompatActivity() {
     internal var dragSourcePos = -1
     internal var draggedApp: AppInfo? = null
 
+    /** Which wallpaper bucket ("dark" or "light") the next pickImageLauncher pick applies to. */
+    internal var pendingBackgroundBucket: String = "light"
+
     internal val pickImageLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let {
             try {
                 contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                Prefs.setBackgroundImage(it.toString())
+                Prefs.setBackgroundImage(pendingBackgroundBucket, it.toString())
                 applyBackgroundImage()
                 Toast.makeText(this, "Background image set", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
@@ -286,7 +289,7 @@ class MainActivity : AppCompatActivity() {
                         val shortcutId = shortcutInfo.id
                         val id = "shortcut:$pkg:$shortcutId"
                         Prefs.addBookmark(id)
-                        Toast.makeText(this, "Shortcut pinned: ${shortcutInfo.shortLabel}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "Shortcut bookmarked: ${shortcutInfo.shortLabel}", Toast.LENGTH_SHORT).show()
                         loadApps()
                         handler.postDelayed({ loadApps() }, 500)
                     }
@@ -313,22 +316,22 @@ class MainActivity : AppCompatActivity() {
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
 
-            // Apply insets padding to mainContent so the wallpaper stays
-            // edge-to-edge behind status bar and navigation bar
+            // Pad mainContent (top bar / app list / filter) and settingsView
+            // — not the root — since the root also directly hosts the
+            // full-screen backgroundImage, blackCurtain, and dropZone, which
+            // are meant to extend edge-to-edge behind the system bars,
+            // rather than be inset by them.
             binding.mainContent.setPadding(
                 systemBars.left,
                 systemBars.top,
                 systemBars.right,
                 if (ime.bottom > 0) ime.bottom else systemBars.bottom
             )
-
-            // Settings view also needs top padding so its close button
-            // aligns with the settings button in the padded topBar
             binding.settingsView.setPadding(
                 systemBars.left,
                 systemBars.top,
                 systemBars.right,
-                if (ime.bottom > 0) ime.bottom else systemBars.bottom
+                systemBars.bottom
             )
 
             val wasVisible = isKeyboardVisible
