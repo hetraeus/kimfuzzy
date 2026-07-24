@@ -31,15 +31,6 @@ Developed by **pikachu**.
 * *Launch tracking* — Recently used apps sort higher in search.
 * *Shortcut support* — Pin dynamic shortcuts from apps directly to bookmarks.
 
-== Screenshots
-
-[cols="3", frame=none, grid=none]
-|===
-| image:screenshots/light.png[Light theme, width=200]
-| image:screenshots/dark.png[Dark theme, width=200]
-| image:screenshots/search.png[Search, width=200]
-|===
-
 == Build
 
 [source,bash]
