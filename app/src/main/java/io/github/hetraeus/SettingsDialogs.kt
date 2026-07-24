@@ -338,7 +338,7 @@ private fun MainActivity.showAboutDialog() {
         textSize = 16f
         setPadding(0, dpToPx(12), 0, dpToPx(12))
         setOnClickListener {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/pikachu/kimfuzzy"))
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/hetraeus/kimfuzzy"))
             startActivity(intent)
         }
     }

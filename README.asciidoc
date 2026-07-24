@@ -11,9 +11,9 @@ image:https://img.shields.io/badge/Android-8.0%2B-green.svg[Android, link=https:
 
 == Developer
 
-Developed by **pikachu**.
+Developed by **hetraeus**.
 
-* Source: https://github.com/pikachu/kimfuzzy
+* Source: https://github.com/hetraeus/kimfuzzy
 * License: https://www.gnu.org/licenses/lgpl-3.0.html[GNU Lesser General Public License v3.0]
 
 == Features
