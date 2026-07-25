@@ -225,6 +225,13 @@ class MainActivity : AppCompatActivity() {
             addDataScheme("package")
         }
         registerReceiver(packageReceiver, filter)
+
+        // The receiver above is only registered while we're resumed, so any
+        // PACKAGE_ADDED/REMOVED/etc. broadcast that fires while the launcher
+        // is backgrounded (e.g. installing an app from the Play Store) is
+        // missed entirely. Do a refresh scan every time we come back to the
+        // foreground so newly installed apps show up reliably.
+        loadApps()
     }
 
     override fun onPause() {
