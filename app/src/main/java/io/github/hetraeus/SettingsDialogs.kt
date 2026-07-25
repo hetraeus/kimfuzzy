@@ -55,17 +55,7 @@ private fun MainActivity.buildSettingsOptions() {
     container.removeAllViews()
 
     val textColor = ThemeUtils.getTextColor()
-    val secondaryText = ThemeUtils.getSecondaryTextColor()
     val accent = ThemeUtils.getAccentColor(this)
-
-    // ── Overview ──────────────────────────────────────────────────────
-    val overview = TextView(this).apply {
-        text = "Customize appearance, manage bookmarks, and back up your launcher configuration."
-        setTextColor(secondaryText)
-        textSize = 13f
-        setPadding(dpToPx(16), dpToPx(4), dpToPx(16), dpToPx(16))
-    }
-    container.addView(overview)
 
     fun sectionHeader(title: String) {
         val header = TextView(this).apply {
@@ -103,18 +93,12 @@ private fun MainActivity.buildSettingsOptions() {
     optionItem("Icon Size", { showIconSizePicker() })
     optionItem("Icon Pack", { showIconPackPicker() })
     optionItem("Background Image", { showBackgroundImagePicker() })
-
-    sectionHeader("Bookmarks")
     optionItem(if (editMode) "💮 Lock bookmarks" else "✏️ Edit bookmarks", { toggleEditMode() }, true)
 
-    sectionHeader("Data")
+    sectionHeader("Setup")
     optionItem("Export settings", { exportSettings() })
     optionItem("Import settings", { importSettings() })
-
-    sectionHeader("System")
     optionItem("Set as Default Launcher", { promptSetDefaultLauncher() })
-
-    sectionHeader("Info")
     optionItem("About", { showAboutDialog() })
 }
 
