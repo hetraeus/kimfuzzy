@@ -147,9 +147,15 @@ internal fun MainActivity.filterApps(query: String) {
 
     appAdapter.submitList(scored)
 
+    // emptyState/appStoresLookup only ever belong to the filter view — guard
+    // on it actually being the visible screen so a filterApps() call that
+    // fires while we're elsewhere (e.g. resetToBookmarks() clearing the
+    // search box during a theme-change recreate(), before allApps has
+    // reloaded) can't leave "No apps found" stuck on top of another screen.
+    val inFilterView = binding.filterContainer.visibility == View.VISIBLE
     val hasNoMatches = scored.isEmpty()
-    binding.emptyState.visibility = if (hasNoMatches) View.VISIBLE else View.GONE
-    binding.appStoresLookup.visibility = if (hasNoMatches && query.isNotEmpty()) View.VISIBLE else View.GONE
+    binding.emptyState.visibility = if (inFilterView && hasNoMatches) View.VISIBLE else View.GONE
+    binding.appStoresLookup.visibility = if (inFilterView && hasNoMatches && query.isNotEmpty()) View.VISIBLE else View.GONE
 }
 
 internal fun MainActivity.launchApp(app: AppInfo) {

@@ -22,6 +22,7 @@ Developed by **hetraeus**.
 * *Bookmark grid* — Pin favorite apps to a bottom grid. Drag-to-reorder in edit mode.
 * *App annotations* — Add personal notes to apps so you remember why you installed them.
 * *Custom suffixes* — Label apps manually (e.g., "Finance - LLM AI").
+* *Hidden apps* — Set an app's suffix to "zzz" (via *Edit suffix*) to bury it from normal search results; type "zzz" anywhere in a query to bring every hidden app back into view.
 * *Icon pack support* — Load any standard Android icon pack (Nova/ADW/Tesla/etc. themes), set independently per theme.
 * *Themes* — Light (warm sepia-inspired palette) and Dark modes with independent wallpaper and icon pack buckets.
 * *Black Curtain* — Opaque overlay for distraction-free PiP video watching.
@@ -30,6 +31,36 @@ Developed by **hetraeus**.
 * *Pinned apps* — Keep chosen apps at the top of search results.
 * *Launch tracking* — Recently used apps sort higher in search.
 * *Shortcut support* — Pin dynamic shortcuts from apps directly to bookmarks.
+
+== Screenshots
+
+image::docs/screenshots/light-mode.jpg[Light mode,300]
+
+*Light mode* — a warm, sepia-inspired palette for daytime use.
+
+image::docs/screenshots/dark-mode.jpg[Dark mode,300]
+
+*Dark mode* — a low-glare palette for night use.
+
+image::docs/screenshots/filter.jpg[Filter/search,300]
+
+*Filter/search* — fuzzy-search all installed apps and shortcuts as you type.
+
+image::docs/screenshots/annotation.jpg[App annotation,300]
+
+*App annotation* — jot down why you installed an app, so future-you remembers.
+
+image::docs/screenshots/settings.jpg[Settings,300]
+
+*Settings* — appearance, bookmarks, and setup options in one full-screen view.
+
+image::docs/screenshots/curtain.jpg[Black Curtain,300]
+
+*Black Curtain* — an opaque overlay for distraction-free PiP video watching.
+
+image::docs/screenshots/zzz.jpg[Hidden apps via zzz,300]
+
+*Hidden apps* — type "zzz" to reveal apps you've buried from normal search results.
 
 == Build
 
@@ -44,7 +75,7 @@ Requires **Android SDK 34** and **Kotlin 1.9+**.
 
 [source,bash]
 ----
-adb install app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/debug/app-debug.apk
 ----
 
 Then open *Settings → Set as Default Launcher* inside the app.

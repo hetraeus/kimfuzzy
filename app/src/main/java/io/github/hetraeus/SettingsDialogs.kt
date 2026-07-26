@@ -35,6 +35,8 @@ internal fun MainActivity.showSettingsView() {
     binding.bookmarksGrid.visibility = View.GONE
     binding.filterContainer.visibility = View.GONE
     binding.appList.visibility = View.GONE
+    binding.emptyState.visibility = View.GONE
+    binding.appStoresLookup.visibility = View.GONE
     binding.settingsView.visibility = View.VISIBLE
 
     buildSettingsOptions()
