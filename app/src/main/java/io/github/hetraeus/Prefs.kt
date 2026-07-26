@@ -19,8 +19,17 @@ object Prefs {
     fun getIconSize(): String = prefs.getString("icon_size", "default") ?: "default"
     fun setIconSize(size: String) = prefs.edit().putString("icon_size", size).apply()
 
-    fun getIconPack(): String = prefs.getString("icon_pack", "") ?: ""
-    fun setIconPack(pack: String) = prefs.edit().putString("icon_pack", pack).apply()
+    // ── Icon Pack ─────────────────────────────────────────────────────
+    // Icon pack is per-theme-bucket, same split as background image below:
+    // "dark" for the dark theme, "light" for the (now sepia-based) light theme.
+    fun getIconPack(bucket: String): String {
+        val key = "icon_pack_$bucket"
+        if (prefs.contains(key)) return prefs.getString(key, "") ?: ""
+        // Back-compat: fall back to the old single global icon pack setting
+        // the first time this bucket is read, before it has its own value.
+        return prefs.getString("icon_pack", "") ?: ""
+    }
+    fun setIconPack(bucket: String, pack: String) = prefs.edit().putString("icon_pack_$bucket", pack).apply()
 
     fun getEditMode(): Boolean = prefs.getBoolean("edit_mode", false)
     fun setEditMode(enabled: Boolean) = prefs.edit().putBoolean("edit_mode", enabled).apply()
@@ -30,7 +39,7 @@ object Prefs {
 
     // ── Background Image ───────────────────────────────────────────────
     // Wallpapers are grouped into two buckets: "dark" for the dark theme,
-    // and "light" shared by both the light and sepia themes.
+    // and "light" for the light theme (formerly the separate sepia theme).
     fun backgroundBucketForTheme(theme: String): String = if (theme == "dark") "dark" else "light"
     fun currentBackgroundBucket(): String = backgroundBucketForTheme(getTheme())
 
@@ -155,7 +164,8 @@ object Prefs {
         val root = JSONObject()
         root.put("theme", getTheme())
         root.put("icon_size", getIconSize())
-        root.put("icon_pack", getIconPack())
+        root.put("icon_pack_dark", getIconPack("dark"))
+        root.put("icon_pack_light", getIconPack("light"))
         root.put("background_image_dark", getBackgroundImage("dark") ?: "")
         root.put("background_image_light", getBackgroundImage("light") ?: "")
         root.put("black_curtain", getBlackCurtain())
@@ -195,7 +205,15 @@ object Prefs {
 
             editor.putString("theme", root.optString("theme", "light"))
             editor.putString("icon_size", root.optString("icon_size", "default"))
-            editor.putString("icon_pack", root.optString("icon_pack", ""))
+            if (root.has("icon_pack_dark") || root.has("icon_pack_light")) {
+                editor.putString("icon_pack_dark", root.optString("icon_pack_dark", ""))
+                editor.putString("icon_pack_light", root.optString("icon_pack_light", ""))
+            } else {
+                // Old backup format had one global icon pack; apply it to both buckets.
+                val legacyPack = root.optString("icon_pack", "")
+                editor.putString("icon_pack_dark", legacyPack)
+                editor.putString("icon_pack_light", legacyPack)
+            }
             editor.putBoolean("black_curtain", root.optBoolean("black_curtain", false))
 
             val bgDark = root.optString("background_image_dark", "")

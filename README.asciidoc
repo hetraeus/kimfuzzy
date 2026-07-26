@@ -22,8 +22,8 @@ Developed by **hetraeus**.
 * *Bookmark grid* — Pin favorite apps to a bottom grid. Drag-to-reorder in edit mode.
 * *App annotations* — Add personal notes to apps so you remember why you installed them.
 * *Custom suffixes* — Label apps manually (e.g., "Finance - LLM AI").
-* *Icon pack support* — Load any standard Android icon pack (Nova/ADW/Tesla/etc. themes).
-* *Themes* — Light, Dark, and Sepia modes with independent wallpaper buckets.
+* *Icon pack support* — Load any standard Android icon pack (Nova/ADW/Tesla/etc. themes), set independently per theme.
+* *Themes* — Light (warm sepia-inspired palette) and Dark modes with independent wallpaper and icon pack buckets.
 * *Black Curtain* — Opaque overlay for distraction-free PiP video watching.
 * *Background images* — Per-theme wallpapers that fill the screen edge-to-edge.
 * *Settings export/import* — Back up and restore your configuration as JSON.
@@ -70,7 +70,7 @@ AppLoading.kt            — PackageManager scan, icon resolution, caching
 AppCache.kt              — Disk cache for app metadata + icon bitmaps
 IconPack.kt              — appfilter.xml parser for third-party icon packs
 FzfScorer.kt             — Fuzzy matching algorithm
-ThemeUtils.kt            — Light / Dark / Sepia color resolution
+ThemeUtils.kt            — Light / Dark color resolution
 Prefs.kt                 — SharedPreferences wrapper + JSON export/import
 SettingsDialogs.kt       — Settings UI builders
 BlackCurtain.kt          — Distraction-free overlay

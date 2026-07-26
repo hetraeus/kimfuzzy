@@ -132,39 +132,28 @@ private fun MainActivity.toggleBlackCurtain() {
 }
 
 private fun MainActivity.showBackgroundImagePicker() {
-    val darkSet = Prefs.getBackgroundImage("dark") != null
-    val lightSet = Prefs.getBackgroundImage("light") != null
+    val bucket = Prefs.currentBackgroundBucket()
+    val bucketLabel = if (bucket == "dark") "Dark" else "Light"
+    val isSet = Prefs.getBackgroundImage(bucket) != null
 
     val items = mutableListOf<Pair<String, () -> Unit>>()
 
-    items.add((if (darkSet) "Change dark theme wallpaper" else "Set dark theme wallpaper") to {
-        pendingBackgroundBucket = "dark"
+    items.add((if (isSet) "Change wallpaper" else "Set wallpaper") to {
+        pendingBackgroundBucket = bucket
         pickImageLauncher.launch(arrayOf("image/*"))
     })
-    if (darkSet) {
-        items.add("Remove dark theme wallpaper" to {
-            Prefs.setBackgroundImage("dark", null)
+    if (isSet) {
+        items.add("Remove wallpaper" to {
+            Prefs.setBackgroundImage(bucket, null)
             applyBackgroundImage()
-            Toast.makeText(this, "Dark theme wallpaper removed", Toast.LENGTH_SHORT).show()
-        })
-    }
-
-    items.add((if (lightSet) "Change light/sepia theme wallpaper" else "Set light/sepia theme wallpaper") to {
-        pendingBackgroundBucket = "light"
-        pickImageLauncher.launch(arrayOf("image/*"))
-    })
-    if (lightSet) {
-        items.add("Remove light/sepia theme wallpaper" to {
-            Prefs.setBackgroundImage("light", null)
-            applyBackgroundImage()
-            Toast.makeText(this, "Light/Sepia theme wallpaper removed", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "$bucketLabel theme wallpaper removed", Toast.LENGTH_SHORT).show()
         })
     }
 
     val labels = items.map { it.first }.toTypedArray()
 
     MaterialAlertDialogBuilder(this)
-        .setTitle("Background Image")
+        .setTitle("Background Image ($bucketLabel theme)")
         .setItems(labels) { _, which -> items[which].second() }
         .setNegativeButton("Cancel", null)
         .show()
@@ -207,7 +196,7 @@ private fun MainActivity.importSettings() {
 }
 
 private fun MainActivity.showThemePicker() {
-    val themes = arrayOf("Light", "Dark", "Sepia")
+    val themes = arrayOf("Light", "Dark")
     val current = Prefs.getTheme()
     val currentIndex = themes.indexOfFirst { it.lowercase() == current }
 
@@ -245,19 +234,21 @@ private fun MainActivity.showIconSizePicker() {
 }
 
 private fun MainActivity.showIconPackPicker() {
+    val bucket = Prefs.currentBackgroundBucket()
+    val bucketLabel = if (bucket == "dark") "Dark" else "Light"
     val packs = IconPack.discover(this)
-    val current = Prefs.getIconPack()
+    val current = Prefs.getIconPack(bucket)
     val currentIndex = packs.indexOfFirst { it.first == current }.coerceAtLeast(0)
 
     val labels = packs.map { it.second }.toTypedArray()
 
     MaterialAlertDialogBuilder(this)
-        .setTitle("Icon Pack")
+        .setTitle("Icon Pack ($bucketLabel theme)")
         .setSingleChoiceItems(labels, currentIndex) { dialog, which ->
             val selected = packs[which].first
             if (selected != current) {
                 IconPack.clearCache()
-                Prefs.setIconPack(selected)
+                Prefs.setIconPack(bucket, selected)
                 loadApps()
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                     val count = IconPack.getAppFilterSize()

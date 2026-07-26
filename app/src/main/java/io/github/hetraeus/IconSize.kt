@@ -11,7 +11,7 @@ object IconSize {
     fun apply(imageView: ImageView, icon: Drawable?, fromPack: Boolean = false) {
         val sizeTheme = Prefs.getIconSize()
         val ctx = imageView.context
-        val iconPack = Prefs.getIconPack()
+        val iconPack = Prefs.getIconPack(Prefs.currentBackgroundBucket())
 
         val size = when (sizeTheme) {
             "small" -> 36f.dpToPx(ctx)
@@ -31,7 +31,7 @@ object IconSize {
             val theme = Prefs.getTheme()
             val iconTint = when (theme) {
                 "dark" -> Color.WHITE
-                else -> Color.BLACK
+                else -> Color.parseColor("#3E2B1F")
             }
 
             // For monochrome icon packs, tint the icon and set matching background
@@ -40,10 +40,8 @@ object IconSize {
             mutableIcon.setTintMode(PorterDuff.Mode.SRC_IN)
 
             val bgColor = when (theme) {
-                "light" -> Color.WHITE
                 "dark" -> Color.BLACK
-                "sepia" -> Color.parseColor("#F4ECD8")
-                else -> Color.WHITE
+                else -> Color.parseColor("#F4ECD8")
             }
 
             // Set theme-colored background

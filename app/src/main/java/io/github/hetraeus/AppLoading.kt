@@ -123,7 +123,7 @@ internal fun MainActivity.loadApps() {
             }
         }
 
-        val iconPackPkg = Prefs.getIconPack()
+        val iconPackPkg = Prefs.getIconPack(Prefs.currentBackgroundBucket())
         val ctx = applicationContext
         val density = ctx.resources.displayMetrics.densityDpi
         val appsWithIcons = allAppsNoIcons.map { app ->
