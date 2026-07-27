@@ -9,13 +9,6 @@ A minimal, fast Android launcher with fuzzy search, bookmark grid, and distracti
 image:https://img.shields.io/badge/license-LGPL%20v3-blue.svg[License, link=https://www.gnu.org/licenses/lgpl-3.0.html]
 image:https://img.shields.io/badge/Android-8.0%2B-green.svg[Android, link=https://developer.android.com]
 
-== Developer
-
-Developed by **hetraeus**.
-
-* Source: https://github.com/hetraeus/kimfuzzy
-* License: https://www.gnu.org/licenses/lgpl-3.0.html[GNU Lesser General Public License v3.0]
-
 == Features
 
 * *Fuzzy search* — Find apps instantly with a fzf-inspired scoring algorithm. Multi-word queries supported.
