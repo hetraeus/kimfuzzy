@@ -2,6 +2,7 @@ package io.github.hetraeus.kimfuzzy
 
 import android.view.MotionEvent
 import android.view.View
+import android.widget.Toast
 import kotlin.math.abs
 
 /**
@@ -15,6 +16,12 @@ import kotlin.math.abs
 internal fun MainActivity.setupBlackCurtain() {
     binding.curtainSettingsBtn.setOnClickListener {
         showSettingsView()
+    }
+
+    binding.curtainBackBtn.setOnClickListener {
+        Prefs.setBlackCurtain(false)
+        resetToBookmarks()
+        Toast.makeText(this, "Black Curtain disabled", Toast.LENGTH_SHORT).show()
     }
 
     val swipeThreshold = 60f * resources.displayMetrics.density

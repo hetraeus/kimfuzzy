@@ -135,7 +135,15 @@ internal fun MainActivity.setupBookmarks() {
     }
 }
 
-private fun MainActivity.calculateSpanCount(): Int = 5
+private fun MainActivity.calculateSpanCount(): Int = when (resources.configuration.orientation) {
+    android.content.res.Configuration.ORIENTATION_LANDSCAPE -> 7
+    else -> 5
+}
+
+private fun MainActivity.calculateRowCount(): Int = when (resources.configuration.orientation) {
+    android.content.res.Configuration.ORIENTATION_LANDSCAPE -> 5
+    else -> 7
+}
 
 internal fun MainActivity.setupGridTouchListener() {
     val swipeThreshold = 60f * resources.displayMetrics.density
@@ -243,7 +251,7 @@ internal fun MainActivity.setupGridTouchListener() {
 
 internal fun MainActivity.loadBookmarks() {
     val bookmarked = Prefs.getBookmarks()
-    val maxSlots = calculateSpanCount() * 7
+    val maxSlots = calculateSpanCount() * calculateRowCount()
     val appsMap = allApps.associateBy { it.id }
 
     val grid = MutableList<AppInfo?>(maxSlots) { null }
