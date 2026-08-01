@@ -1,0 +1,6 @@
+# devenv.yaml
+inputs:
+  nixpkgs:
+    url: github:NixOS/nixpkgs/nixos-26.05
+nixpkgs:
+  allow_unfree: true
