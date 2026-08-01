@@ -4,6 +4,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import io.github.hetraeus.kimfuzzy.databinding.ItemBookmarkBinding
 import kotlin.math.abs
@@ -22,8 +23,23 @@ class BookmarkAdapter(
     private var items: List<AppInfo?> = emptyList()
 
     fun submitList(list: List<AppInfo?>) {
+        val diffCallback = object : DiffUtil.Callback() {
+            override fun getOldListSize(): Int = items.size
+            override fun getNewListSize(): Int = list.size
+            override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+                return items[oldItemPosition]?.id == list[newItemPosition]?.id
+            }
+            override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+                val old = items[oldItemPosition]
+                val new = list[newItemPosition]
+                if (old == null && new == null) return true
+                if (old == null || new == null) return false
+                return old.label == new.label && old.iconFromPack == new.iconFromPack
+            }
+        }
+        val diffResult = DiffUtil.calculateDiff(diffCallback)
         items = list
-        notifyDataSetChanged()
+        diffResult.dispatchUpdatesTo(this)
     }
 
     fun getItemAt(position: Int): AppInfo? = items.getOrNull(position)
@@ -58,6 +74,7 @@ class BookmarkAdapter(
             holder.binding.icon.colorFilter = null
             holder.binding.name.text = ""
             holder.binding.root.setOnTouchListener(null)
+            holder.binding.root.setOnClickListener(null)
             holder.binding.root.isClickable = false
         } else {
             holder.binding.root.visibility = View.VISIBLE
@@ -72,6 +89,10 @@ class BookmarkAdapter(
                 var startRawX = 0f
                 var startRawY = 0f
 
+                holder.binding.root.isClickable = true
+                holder.binding.root.setOnClickListener {
+                    onRename?.invoke(app)
+                }
                 holder.binding.root.setOnTouchListener { _, event ->
                     when (event.actionMasked) {
                         MotionEvent.ACTION_DOWN -> {
@@ -99,7 +120,7 @@ class BookmarkAdapter(
                         }
                         MotionEvent.ACTION_UP -> {
                             if (hasMoved) dragListener.onDragEnd(event.rawX, event.rawY)
-                            else onRename?.invoke(app)
+                            else holder.binding.root.performClick()
                             true
                         }
                         MotionEvent.ACTION_CANCEL -> {
@@ -112,6 +133,7 @@ class BookmarkAdapter(
             } else {
                 // Lock mode: parent OnItemTouchListener handles tap / long-press / swipe
                 holder.binding.root.setOnTouchListener(null)
+                holder.binding.root.setOnClickListener(null)
                 holder.binding.root.isClickable = false
             }
         }
