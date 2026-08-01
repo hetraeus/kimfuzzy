@@ -4,15 +4,8 @@ import android.annotation.SuppressLint
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Toast
+import androidx.core.view.isVisible
 import kotlin.math.abs
-
-/**
- * Black Curtain: an opaque overlay for distraction-free PiP video watching.
- * Sits on top of everything, blocking touches to the bookmarks grid and
- * other buttons, except: its own settings button (mirrors the real one)
- * and a swipe-up gesture, which still opens search.
- * Also hides system status bar icons (battery, network, etc.) when active.
- */
 
 @SuppressLint("ClickableViewAccessibility")
 internal fun MainActivity.setupBlackCurtain() {
@@ -41,15 +34,13 @@ internal fun MainActivity.setupBlackCurtain() {
                     val dx = event.x - startX
                     val dy = startY - event.y
                     if (dy > swipeThreshold && dy > abs(dx) * 2) {
-                        binding.blackCurtain.visibility = View.GONE
+                        binding.blackCurtain.isVisible = false
                         setSystemUiVisibility(hide = false)
                         showFilter()
                         return true
                     }
                 }
             }
-            // Consume every other touch so nothing behind the curtain
-            // (bookmarks, top bar buttons, etc.) ever receives it.
             return true
         }
     })
@@ -57,9 +48,8 @@ internal fun MainActivity.setupBlackCurtain() {
     applyBlackCurtainState()
 }
 
-/** Shows/hides the curtain based on the pref, but never over the search view. */
 internal fun MainActivity.applyBlackCurtainState() {
-    val shouldShow = Prefs.getBlackCurtain() && binding.filterContainer.visibility != View.VISIBLE
-    binding.blackCurtain.visibility = if (shouldShow) View.VISIBLE else View.GONE
+    val shouldShow = Prefs.getBlackCurtain() && !binding.filterContainer.isVisible
+    binding.blackCurtain.isVisible = shouldShow
     setSystemUiVisibility(hide = shouldShow)
 }

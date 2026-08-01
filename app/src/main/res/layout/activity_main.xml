@@ -160,6 +160,7 @@
 
             <EditText
                 android:id="@+id/filter"
+                android:importantForAutofill="no"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -201,7 +202,7 @@
          Sits on top of everything. Blocks all touches except a swipe-up
          gesture (still opens search) and its own settings button, which
          mirrors the real settingsBtn so Settings stays reachable. -->
-    <FrameLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/blackCurtain"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -214,46 +215,47 @@
             android:id="@+id/curtainSettingsBtn"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:layout_gravity="top|end"
             android:layout_margin="8dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:gravity="center"
             android:text="@string/icon_curtain_settings"
             android:textColor="#3D3D3D"
             android:textSize="20sp"
-            android:contentDescription="@string/content_description_settings" />
+            android:contentDescription="@string/content_description_settings"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- Split screen 3:1; center the exit button in the bottom fourth -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical">
+        <TextView
+            android:id="@+id/curtainBackBtn"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:gravity="center"
+            android:text="@string/icon_back"
+            android:textColor="#FF0000"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:contentDescription="@string/content_description_exit_curtain"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="@id/guideline_center"
+            app:layout_constraintTop_toTopOf="@id/guideline_bottom_quarter" />
 
-            <View
-                android:layout_width="0dp"
-                android:layout_height="0dp"
-                android:layout_weight="3" />
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/guideline_center"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintGuide_percent="0.5" />
 
-            <FrameLayout
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1">
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/guideline_bottom_quarter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            app:layout_constraintGuide_percent="0.75" />
 
-                <TextView
-                    android:id="@+id/curtainBackBtn"
-                    android:layout_width="56dp"
-                    android:layout_height="56dp"
-                    android:layout_gravity="center"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:gravity="center"
-                    android:text="@string/icon_back"
-                    android:textColor="#FF0000"
-                    android:textSize="28sp"
-                    android:textStyle="bold"
-                    android:contentDescription="@string/content_description_exit_curtain" />
-            </FrameLayout>
-        </LinearLayout>
-    </FrameLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
     <!-- Settings View: full-screen overlay for settings options. -->
     <ScrollView

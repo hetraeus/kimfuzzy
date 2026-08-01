@@ -31,6 +31,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.isInvisible
+import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -63,7 +65,6 @@ class MainActivity : AppCompatActivity() {
     internal var dragSourcePos = -1
     internal var draggedApp: AppInfo? = null
 
-    /** Which wallpaper bucket ("dark" or "light") the next pickImageLauncher pick applies to. */
     internal var pendingBackgroundBucket: String = "light"
 
     internal val pickImageLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -135,7 +136,7 @@ class MainActivity : AppCompatActivity() {
                 binding.contentArea.addView(view, params)
                 floatingView = view
 
-                holder.binding.root.visibility = View.INVISIBLE
+                holder.binding.root.isInvisible = true
             }
 
             override fun onDragMove(rawX: Float, rawY: Float) {
@@ -215,8 +216,8 @@ class MainActivity : AppCompatActivity() {
     onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
             when {
-                binding.settingsView.visibility == View.VISIBLE -> resetToBookmarks()
-                binding.filterContainer.visibility == View.VISIBLE || isKeyboardVisible -> resetToBookmarks()
+                binding.settingsView.isVisible -> resetToBookmarks()
+                binding.filterContainer.isVisible || isKeyboardVisible -> resetToBookmarks()
                 else -> {
                     isEnabled = false
                     onBackPressedDispatcher.onBackPressed()
@@ -241,12 +242,6 @@ class MainActivity : AppCompatActivity() {
             addDataScheme("package")
         }
         registerReceiver(packageReceiver, filter)
-
-        // The receiver above is only registered while we're resumed, so any
-        // PACKAGE_ADDED/REMOVED/etc. broadcast that fires while the launcher
-        // is backgrounded (e.g. installing an app from the Play Store) is
-        // missed entirely. Do a refresh scan every time we come back to the
-        // foreground so newly installed apps show up reliably.
         loadApps()
     }
 
@@ -260,7 +255,7 @@ class MainActivity : AppCompatActivity() {
         if (Prefs.getEditMode()) {
             Prefs.setEditMode(false)
             updateEditModeIcon()
-            binding.dropZone.visibility = View.GONE
+            binding.dropZone.isVisible = false
             bookmarkAdapter = BookmarkAdapter(
                 onRename = { app -> renameBookmark(app) },
                 dragListener = null
@@ -290,36 +285,34 @@ class MainActivity : AppCompatActivity() {
         binding.filter.text?.clear()
         binding.filter.clearFocus()
         hideKeyboard()
-        binding.filterContainer.visibility = View.GONE
-        binding.bookmarksGrid.visibility = View.VISIBLE
-        binding.appList.visibility = View.GONE
-        binding.emptyState.visibility = View.GONE
-        binding.settingsView.visibility = View.GONE
+        binding.filterContainer.isVisible = false
+        binding.bookmarksGrid.isVisible = true
+        binding.appList.isVisible = false
+        binding.emptyState.isVisible = false
+        binding.settingsView.isVisible = false
         loadBookmarks()
         applyBlackCurtainState()
     }
 
     internal fun handleConfirmPinShortcut(intent: Intent) {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
-            val request = launcherApps.getPinItemRequest(intent)
-            if (request != null && request.requestType == LauncherApps.PinItemRequest.REQUEST_TYPE_SHORTCUT) {
-                val shortcutInfo = request.shortcutInfo
-                if (shortcutInfo != null) {
-                    if (request.isValid) {
-                        request.accept()
-                        val pkg = shortcutInfo.`package`
-                        val shortcutId = shortcutInfo.id
-                        val id = "shortcut:$pkg:$shortcutId"
-                        Prefs.addBookmark(id)
-                        Toast.makeText(this, "Shortcut bookmarked: ${shortcutInfo.shortLabel}", Toast.LENGTH_SHORT).show()
-                        loadApps()
-                        handler.postDelayed({ loadApps() }, 500)
-                    }
-                }
+    val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+    val request = launcherApps.getPinItemRequest(intent)
+    if (request != null && request.requestType == LauncherApps.PinItemRequest.REQUEST_TYPE_SHORTCUT) {
+        val shortcutInfo = request.shortcutInfo
+        if (shortcutInfo != null) {
+            if (request.isValid) {
+                request.accept()
+                val pkg = shortcutInfo.`package`
+                val shortcutId = shortcutInfo.id
+                val id = "shortcut:$pkg:$shortcutId"
+                Prefs.addBookmark(id)
+                Toast.makeText(this, "Shortcut bookmarked: ${shortcutInfo.shortLabel}", Toast.LENGTH_SHORT).show()
+                loadApps()
+                handler.postDelayed({ loadApps() }, 500)
             }
         }
     }
+}
 
     internal fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
 
@@ -339,11 +332,6 @@ class MainActivity : AppCompatActivity() {
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
 
-            // Pad mainContent (top bar / app list / filter) and settingsView
-            // — not the root — since the root also directly hosts the
-            // full-screen backgroundImage, blackCurtain, and dropZone, which
-            // are meant to extend edge-to-edge behind the system bars,
-            // rather than be inset by them.
             binding.mainContent.setPadding(
                 systemBars.left,
                 systemBars.top,

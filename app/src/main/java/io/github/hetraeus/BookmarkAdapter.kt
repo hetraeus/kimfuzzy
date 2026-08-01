@@ -4,6 +4,8 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.isInvisible
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import io.github.hetraeus.kimfuzzy.databinding.ItemBookmarkBinding
@@ -69,7 +71,7 @@ class BookmarkAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val app = items[position]
         if (app == null) {
-            holder.binding.root.visibility = View.INVISIBLE
+            holder.binding.root.isInvisible = true
             holder.binding.icon.setImageDrawable(null)
             holder.binding.icon.colorFilter = null
             holder.binding.name.text = ""
@@ -77,13 +79,12 @@ class BookmarkAdapter(
             holder.binding.root.setOnClickListener(null)
             holder.binding.root.isClickable = false
         } else {
-            holder.binding.root.visibility = View.VISIBLE
+            holder.binding.root.isVisible = true
             holder.binding.name.text = app.label
             holder.binding.name.setTextColor(ThemeUtils.getTextColor())
             IconSize.apply(holder.binding.icon, app.icon, app.iconFromPack)
 
             if (dragListener != null) {
-                // Edit mode: drag to move, tap to rename
                 val dragThreshold = 28f * holder.binding.root.context.resources.displayMetrics.density
                 var hasMoved = false
                 var startRawX = 0f
@@ -131,7 +132,6 @@ class BookmarkAdapter(
                     }
                 }
             } else {
-                // Lock mode: parent OnItemTouchListener handles tap / long-press / swipe
                 holder.binding.root.setOnTouchListener(null)
                 holder.binding.root.setOnClickListener(null)
                 holder.binding.root.isClickable = false

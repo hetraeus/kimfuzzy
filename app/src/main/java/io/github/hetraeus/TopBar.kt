@@ -4,22 +4,31 @@ import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
-import android.net.Uri
+import android.os.Build
 import android.provider.AlarmClock
 import android.provider.CalendarContract
 import android.view.View
 import android.widget.Toast
+import androidx.core.graphics.get
+import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import java.util.Date
 
-/** Window flags, theme colors, background image, and the date/alarm top bar. */
-
+@Suppress("DEPRECATION")
 internal fun MainActivity.setupWindow() {
     WindowCompat.setDecorFitsSystemWindows(window, false)
-    window.statusBarColor = Color.TRANSPARENT
-    window.navigationBarColor = Color.TRANSPARENT
+
+    val controller = WindowInsetsControllerCompat(window, window.decorView)
+    val isLight = isBackgroundLight()
+    controller.isAppearanceLightStatusBars = isLight
+    controller.isAppearanceLightNavigationBars = isLight
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        window.isStatusBarContrastEnforced = false
+        window.isNavigationBarContrastEnforced = false
+    }
 }
 
 internal fun MainActivity.applyThemeColors() {
@@ -29,11 +38,9 @@ internal fun MainActivity.applyThemeColors() {
     val accent = ThemeUtils.getAccentColor(this)
 
     binding.root.setBackgroundColor(bg)
-    // Top bar is transparent so the wallpaper shows through behind it
     binding.topBar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
 
     binding.dateText.setTextColor(text)
-    // Alarm text made darker using a more muted/darker secondary color
     binding.nextAlarm.setTextColor(ThemeUtils.getDimmedTextColor())
     binding.emptyState.setTextColor(textSecondary)
 
@@ -56,12 +63,8 @@ internal fun MainActivity.applyBackgroundImage() {
     val bgUri = Prefs.getBackgroundImage(Prefs.currentBackgroundBucket())
     if (bgUri != null) {
         try {
-            val uri = Uri.parse(bgUri)
+            val uri = bgUri.toUri()
             contentResolver.openInputStream(uri)?.use { stream ->
-                // Decode as a bitmap and hand it to the full-screen
-                // backgroundImage ImageView (scaleType="centerCrop") so the
-                // wallpaper fills the screen edge-to-edge, behind the top
-                // bar and bottom bookmarks area, without ever stretching.
                 val bitmap = android.graphics.BitmapFactory.decodeStream(stream)
                 binding.backgroundImage.setImageBitmap(bitmap)
             }
@@ -71,6 +74,27 @@ internal fun MainActivity.applyBackgroundImage() {
         }
     } else {
         binding.backgroundImage.setImageDrawable(null)
+    }
+}
+
+private fun MainActivity.isBackgroundLight(): Boolean {
+    val bgUri = Prefs.getBackgroundImage(Prefs.currentBackgroundBucket())
+    return if (bgUri != null) {
+        try {
+            val uri = bgUri.toUri()
+            contentResolver.openInputStream(uri)?.use { stream ->
+                val bitmap = android.graphics.BitmapFactory.decodeStream(stream)
+                bitmap?.let { bmp ->
+                    val pixel = bmp[bmp.width / 2, bmp.height / 2]
+                    android.graphics.Color.luminance(pixel) > 0.5
+                } ?: false
+            } ?: false
+        } catch (e: Exception) {
+            false
+        }
+    } else {
+        val bg = ThemeUtils.getBackgroundColor()
+        android.graphics.Color.luminance(bg) > 0.5
     }
 }
 
@@ -161,7 +185,6 @@ private fun MainActivity.updateAlarm() {
     }
 }
 
-/** Hides or shows system status bar icons (battery, network, etc.) using legacy flags. */
 internal fun MainActivity.setSystemUiVisibility(hide: Boolean) {
     val controller = WindowCompat.getInsetsController(window, window.decorView)
     if (hide) {

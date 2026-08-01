@@ -13,22 +13,18 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.FrameLayout
 import android.widget.Toast
+import androidx.core.view.isInvisible
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import io.github.hetraeus.kimfuzzy.databinding.ItemBookmarkBinding
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlin.math.abs
 
-/** The bottom bookmarks grid: layout, drag-to-reorder, tap/long-press, and swipe-up-to-search. */
-
-// Computed from real content-area pixels after layout; these defaults are harmless fallbacks.
 private var gridColumns = 5
 private var gridRows = 7
 
-/** Recompute columns/rows from how many 72dp cells actually fit inside contentArea.
- *  Tune cellSize if your item_bookmark.xml layout needs more/less space. */
 private fun MainActivity.recomputeGridDimensions() {
-    val cellSize = dpToPx(72) // icon + label + padding; adjust to match item_bookmark.xml
+    val cellSize = dpToPx(72)
     val contentWidth = binding.contentArea.width.takeIf { it > 0 }
         ?: resources.displayMetrics.widthPixels
     val contentHeight = binding.contentArea.height.takeIf { it > 0 }
@@ -81,7 +77,7 @@ internal fun MainActivity.createBookmarkDragListener(): BookmarkAdapter.DragList
             binding.contentArea.addView(view, params)
             floatingView = view
 
-            holder.binding.root.visibility = View.INVISIBLE
+            holder.binding.root.isInvisible = true
         }
 
         override fun onDragMove(rawX: Float, rawY: Float) {
@@ -153,7 +149,6 @@ internal fun MainActivity.setupBookmarks() {
         adapter = bookmarkAdapter
     }
 
-    // Measure after first layout and recompute on every resize (rotation, split-screen, etc.)
     binding.contentArea.addOnLayoutChangeListener { _, left, top, right, bottom,
                                                      oldLeft, oldTop, oldRight, oldBottom ->
         val newW = right - left
@@ -363,13 +358,11 @@ private fun MainActivity.showBookmarkOptions(app: AppInfo) {
     val accent = ThemeUtils.getAccentColor(this)
     val secondaryText = ThemeUtils.getSecondaryTextColor()
 
-    // Build custom view
     val contentView = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(8))
     }
 
-    // App name (big) — use original app name, not custom label
     val originalApp = allApps.find { it.id == app.id }
     val displayName = originalApp?.label ?: app.label
     val nameView = TextView(this).apply {
@@ -380,7 +373,6 @@ private fun MainActivity.showBookmarkOptions(app: AppInfo) {
     }
     contentView.addView(nameView)
 
-    // Annotation section
     val annotationContainer = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
     }
@@ -393,7 +385,6 @@ private fun MainActivity.showBookmarkOptions(app: AppInfo) {
         val currentAnnotation = Prefs.getAppAnnotation(app.id)
 
         if (currentAnnotation != null) {
-            // Show existing annotation
             val annotationView = TextView(this).apply {
                 text = currentAnnotation
                 setTextColor(secondaryText)
@@ -408,7 +399,6 @@ private fun MainActivity.showBookmarkOptions(app: AppInfo) {
             }
             annotationContainer.addView(annotationView)
         } else {
-            // Show "Annotate app" prompt
             val annotatePrompt = TextView(this).apply {
                 text = getString(R.string.annotate_app)
                 setTextColor(accent)
@@ -425,7 +415,6 @@ private fun MainActivity.showBookmarkOptions(app: AppInfo) {
 
     buildAnnotationSection()
 
-    // Divider
     val divider = View(this).apply {
         layoutParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -435,7 +424,6 @@ private fun MainActivity.showBookmarkOptions(app: AppInfo) {
     }
     contentView.addView(divider)
 
-    // Action buttons
     val actions = listOf(
         "Rename bookmark" to { renameBookmark(app) },
         "Hide bookmark" to { hideBookmark(app) }

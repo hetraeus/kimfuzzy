@@ -7,19 +7,13 @@ import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.util.Log
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.drawable.toDrawable
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 
-/**
- * Persists a lightweight snapshot of [AppInfo] (metadata + icon bitmaps) to
- * disk so the launcher can render instantly on a cold start, instead of
- * waiting on a fresh PackageManager scan + icon resolution every time the
- * process is recreated (e.g. after Android kills the launcher in the
- * background). loadApps() still runs its full live scan afterwards to keep
- * things accurate — this cache is purely for a fast first paint.
- */
 object AppCache {
     private const val TAG = "AppCache"
     private const val CACHE_FILE = "app_cache.json"
@@ -40,7 +34,7 @@ object AppCache {
                 val icon: Drawable? = if (iconFile.exists()) {
                     try {
                         BitmapFactory.decodeFile(iconFile.absolutePath)
-                            ?.let { BitmapDrawable(context.resources, it) }
+                            ?.let { it.toDrawable(context.resources) }
                     } catch (e: Exception) {
                         null
                     }
@@ -65,7 +59,6 @@ object AppCache {
         }
     }
 
-    /** Should be called from a background thread — does disk I/O. */
     fun saveApps(context: Context, apps: List<AppInfo>) {
         try {
             val iconDir = File(context.filesDir, ICON_DIR)
@@ -97,7 +90,6 @@ object AppCache {
                 }
             }
 
-            // Drop stale icons for apps that no longer exist.
             iconDir.listFiles()?.forEach { f ->
                 if (f.name !in keepFiles) f.delete()
             }
@@ -128,7 +120,7 @@ object AppCache {
         }
         val width = drawable.intrinsicWidth.coerceAtLeast(1)
         val height = drawable.intrinsicHeight.coerceAtLeast(1)
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         drawable.setBounds(0, 0, canvas.width, canvas.height)
         drawable.draw(canvas)

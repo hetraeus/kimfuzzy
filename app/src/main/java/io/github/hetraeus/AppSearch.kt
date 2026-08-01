@@ -15,11 +15,11 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.net.toUri
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-
-/** The search/filter app list: the RecyclerView itself, the search box, launching apps, and per-app options. */
 
 internal fun MainActivity.setupAppList() {
     appAdapter = AppAdapter(
@@ -66,8 +66,8 @@ internal fun MainActivity.setupFilter() {
         override fun afterTextChanged(s: Editable?) {
             val query = s?.toString() ?: ""
             val hasText = query.isNotEmpty()
-            binding.clearBtn.visibility = if (hasText) View.VISIBLE else View.GONE
-            binding.playBtn.visibility = if (hasText) View.VISIBLE else View.GONE
+            binding.clearBtn.isVisible = hasText
+            binding.playBtn.isVisible = hasText
             filterApps(query)
         }
     })
@@ -86,7 +86,6 @@ internal fun MainActivity.setupFilter() {
         }
     }
 
-    // App stores lookup click handler
     binding.appStoresLookup.setOnClickListener {
         val query = binding.filter.text?.toString()?.trim() ?: ""
         if (query.isNotEmpty()) {
@@ -96,10 +95,10 @@ internal fun MainActivity.setupFilter() {
 }
 
 internal fun MainActivity.showFilter() {
-    if (binding.filterContainer.visibility == View.VISIBLE) return
-    binding.bookmarksGrid.visibility = View.GONE
-    binding.appList.visibility = View.VISIBLE
-    binding.filterContainer.visibility = View.VISIBLE
+    if (binding.filterContainer.isVisible) return
+    binding.bookmarksGrid.isVisible = false
+    binding.appList.isVisible = true
+    binding.filterContainer.isVisible = true
     binding.filter.requestFocus()
     showKeyboard()
     filterApps(binding.filter.text?.toString() ?: "")
@@ -147,15 +146,10 @@ internal fun MainActivity.filterApps(query: String) {
 
     appAdapter.submitList(scored)
 
-    // emptyState/appStoresLookup only ever belong to the filter view — guard
-    // on it actually being the visible screen so a filterApps() call that
-    // fires while we're elsewhere (e.g. resetToBookmarks() clearing the
-    // search box during a theme-change recreate(), before allApps has
-    // reloaded) can't leave "No apps found" stuck on top of another screen.
-    val inFilterView = binding.filterContainer.visibility == View.VISIBLE
+    val inFilterView = binding.filterContainer.isVisible
     val hasNoMatches = scored.isEmpty()
-    binding.emptyState.visibility = if (inFilterView && hasNoMatches) View.VISIBLE else View.GONE
-    binding.appStoresLookup.visibility = if (inFilterView && hasNoMatches && query.isNotEmpty()) View.VISIBLE else View.GONE
+    binding.emptyState.isVisible = inFilterView && hasNoMatches
+    binding.appStoresLookup.isVisible = inFilterView && hasNoMatches && query.isNotEmpty()
 }
 
 internal fun MainActivity.launchApp(app: AppInfo) {
@@ -185,13 +179,11 @@ private fun MainActivity.showAppOptions(app: AppInfo) {
     val accent = ThemeUtils.getAccentColor(this)
     val secondaryText = ThemeUtils.getSecondaryTextColor()
 
-    // Build custom view
     val contentView = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         setPadding(dpToPx(24), dpToPx(16), dpToPx(24), dpToPx(8))
     }
 
-    // App name (big)
     val nameView = TextView(this).apply {
         text = app.label
         setTextColor(textColor)
@@ -200,7 +192,6 @@ private fun MainActivity.showAppOptions(app: AppInfo) {
     }
     contentView.addView(nameView)
 
-    // Annotation section
     val annotationContainer = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
     }
@@ -211,7 +202,6 @@ private fun MainActivity.showAppOptions(app: AppInfo) {
         val currentAnnotation = Prefs.getAppAnnotation(app.id)
 
         if (currentAnnotation != null) {
-            // Show existing annotation
             val annotationView = TextView(this).apply {
                 text = currentAnnotation
                 setTextColor(secondaryText)
@@ -223,7 +213,6 @@ private fun MainActivity.showAppOptions(app: AppInfo) {
             }
             annotationContainer.addView(annotationView)
         } else {
-            // Show "Annotate app" prompt
             val annotatePrompt = TextView(this).apply {
                 text = getString(R.string.annotate_app)
                 setTextColor(accent)
@@ -237,7 +226,6 @@ private fun MainActivity.showAppOptions(app: AppInfo) {
 
     buildAnnotationSection()
 
-    // Divider
     val divider = View(this).apply {
         layoutParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -247,7 +235,6 @@ private fun MainActivity.showAppOptions(app: AppInfo) {
     }
     contentView.addView(divider)
 
-    // Action buttons
     val actionsContainer = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
     }
@@ -390,29 +377,25 @@ private fun MainActivity.editPrefix(app: AppInfo) {
 
 private fun MainActivity.showAppInfo(app: AppInfo) {
     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-        data = Uri.parse("package:${app.packageName}")
+        data = "package:${app.packageName}".toUri()
     }
     startActivity(intent)
 }
 
-/** Opens both Google Play Store and F-Droid (if available) searching for the given query. */
 private fun MainActivity.searchAppStores(query: String) {
-    // Google Play Store
     val playIntent = Intent(Intent.ACTION_VIEW).apply {
-        data = Uri.parse("market://search?q=${Uri.encode(query)}")
+        data = "market://search?q=${Uri.encode(query)}".toUri()
     }
     val playWebIntent = Intent(Intent.ACTION_VIEW).apply {
-        data = Uri.parse("https://play.google.com/store/search?q=${Uri.encode(query)}")
+        data = "https://play.google.com/store/search?q=${Uri.encode(query)}".toUri()
     }
 
-    // F-Droid
     val fdroidIntent = Intent(Intent.ACTION_VIEW).apply {
-        data = Uri.parse("https://f-droid.org/packages/search?q=${Uri.encode(query)}")
+        data = "https://f-droid.org/packages/search?q=${Uri.encode(query)}".toUri()
     }
 
     var opened = false
 
-    // Try Google Play app first
     if (playIntent.resolveActivity(packageManager) != null) {
         startActivity(playIntent)
         opened = true
@@ -421,7 +404,6 @@ private fun MainActivity.searchAppStores(query: String) {
         opened = true
     }
 
-    // Try F-Droid
     if (fdroidIntent.resolveActivity(packageManager) != null) {
         startActivity(fdroidIntent)
         opened = true

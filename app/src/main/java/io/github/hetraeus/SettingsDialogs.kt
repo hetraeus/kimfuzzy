@@ -3,7 +3,6 @@ package io.github.hetraeus.kimfuzzy
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
-import android.net.Uri
 import android.provider.Settings
 import android.view.View
 import android.view.WindowManager
@@ -11,13 +10,13 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.net.toUri
+import androidx.core.view.isVisible
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-
-/** Full-screen settings view reachable from the settings (𑁍) button. */
 
 internal fun MainActivity.setupSettings() {
     binding.settingsBtn.setOnClickListener {
-        if (binding.settingsView.visibility == View.VISIBLE) {
+        if (binding.settingsView.isVisible) {
             resetToBookmarks()
         } else {
             showSettingsView()
@@ -31,13 +30,13 @@ internal fun MainActivity.setupSettings() {
 
 internal fun MainActivity.showSettingsView() {
     hideKeyboard()
-    binding.blackCurtain.visibility = View.GONE
-    binding.bookmarksGrid.visibility = View.GONE
-    binding.filterContainer.visibility = View.GONE
-    binding.appList.visibility = View.GONE
-    binding.emptyState.visibility = View.GONE
-    binding.appStoresLookup.visibility = View.GONE
-    binding.settingsView.visibility = View.VISIBLE
+    binding.blackCurtain.isVisible = false
+    binding.bookmarksGrid.isVisible = false
+    binding.filterContainer.isVisible = false
+    binding.appList.isVisible = false
+    binding.emptyState.isVisible = false
+    binding.appStoresLookup.isVisible = false
+    binding.settingsView.isVisible = true
 
     buildSettingsOptions()
     applySettingsThemeColors()
@@ -108,7 +107,7 @@ private fun MainActivity.toggleEditMode() {
     val editMode = Prefs.getEditMode()
     Prefs.setEditMode(!editMode)
     updateEditModeIcon()
-    binding.dropZone.visibility = if (Prefs.getEditMode()) View.VISIBLE else View.GONE
+    binding.dropZone.isVisible = Prefs.getEditMode()
     bookmarkAdapter = BookmarkAdapter(
         onRename = { app -> renameBookmark(app) },
         dragListener = if (Prefs.getEditMode()) createBookmarkDragListener() else null
@@ -315,7 +314,7 @@ private fun MainActivity.showAboutDialog() {
         textSize = 16f
         setPadding(0, dpToPx(12), 0, dpToPx(12))
         setOnClickListener {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/hetraeus/kimfuzzy"))
+            val intent = Intent(Intent.ACTION_VIEW, "https://github.com/hetraeus/kimfuzzy".toUri())
             startActivity(intent)
         }
     }
@@ -327,7 +326,7 @@ private fun MainActivity.showAboutDialog() {
         textSize = 16f
         setPadding(0, dpToPx(12), 0, dpToPx(12))
         setOnClickListener {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.gnu.org/licenses/lgpl-3.0.html"))
+            val intent = Intent(Intent.ACTION_VIEW, "https://www.gnu.org/licenses/lgpl-3.0.html".toUri())
             startActivity(intent)
         }
     }

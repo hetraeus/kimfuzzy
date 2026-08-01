@@ -6,6 +6,7 @@ import android.graphics.PorterDuff
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.widget.ImageView
+import androidx.core.graphics.toColorInt
 
 object IconSize {
     fun apply(imageView: ImageView, icon: Drawable?, fromPack: Boolean = false) {
@@ -22,7 +23,6 @@ object IconSize {
         imageView.layoutParams.width = size
         imageView.layoutParams.height = size
 
-        // Always start clean — kill any recycled background or clip
         imageView.background = null
         imageView.clipToOutline = false
         imageView.colorFilter = null
@@ -31,20 +31,18 @@ object IconSize {
             val theme = Prefs.getTheme()
             val iconTint = when (theme) {
                 "dark" -> Color.WHITE
-                else -> Color.parseColor("#3E2B1F")
+                else -> "#3E2B1F".toColorInt()
             }
 
-            // For monochrome icon packs, tint the icon and set matching background
             val mutableIcon = icon.mutate()
             mutableIcon.setTint(iconTint)
             mutableIcon.setTintMode(PorterDuff.Mode.SRC_IN)
 
             val bgColor = when (theme) {
                 "dark" -> Color.BLACK
-                else -> Color.parseColor("#F4ECD8")
+                else -> "#F4ECD8".toColorInt()
             }
 
-            // Set theme-colored background
             val bg = GradientDrawable()
             bg.shape = GradientDrawable.RECTANGLE
             bg.setColor(bgColor)
@@ -53,7 +51,6 @@ object IconSize {
             imageView.setImageDrawable(mutableIcon)
             imageView.scaleType = ImageView.ScaleType.FIT_CENTER
         } else {
-            // Default / system icons: keep original colors, no filter
             imageView.colorFilter = null
             imageView.setImageDrawable(icon)
             when (sizeTheme) {
@@ -61,7 +58,7 @@ object IconSize {
                     val bg = GradientDrawable()
                     bg.shape = GradientDrawable.RECTANGLE
                     bg.cornerRadius = 8f.dpToPx(ctx).toFloat()
-                    bg.setColor(Color.parseColor("#20FFFFFF"))
+                    bg.setColor("#20FFFFFF".toColorInt())
                     imageView.background = bg
                     imageView.clipToOutline = true
                     imageView.scaleType = ImageView.ScaleType.CENTER_CROP
