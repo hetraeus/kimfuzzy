@@ -410,7 +410,7 @@ private fun MainActivity.showBookmarkOptions(app: AppInfo) {
         } else {
             // Show "Annotate app" prompt
             val annotatePrompt = TextView(this).apply {
-                text = "Annotate app"
+                text = getString(R.string.annotate_app)
                 setTextColor(accent)
                 textSize = 14f
                 setPadding(0, 0, 0, dpToPx(12))

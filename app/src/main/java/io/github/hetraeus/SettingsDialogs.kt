@@ -285,7 +285,7 @@ private fun MainActivity.showAboutDialog() {
     }
 
     val titleView = TextView(this).apply {
-        text = "KimFuzzy"
+        text = getString(R.string.about_title)
         setTextColor(textColor)
         textSize = 22f
         setPadding(0, 0, 0, dpToPx(4))
@@ -293,7 +293,7 @@ private fun MainActivity.showAboutDialog() {
     contentView.addView(titleView)
 
     val devView = TextView(this).apply {
-        text = "Developer: hetraeus"
+        text = getString(R.string.about_developer_format, "hetraeus")
         setTextColor(secondaryText)
         textSize = 14f
         setPadding(0, 0, 0, dpToPx(16))
@@ -310,7 +310,7 @@ private fun MainActivity.showAboutDialog() {
     contentView.addView(divider)
 
     val githubLink = TextView(this).apply {
-        text = "GitHub"
+        text = getString(R.string.about_github)
         setTextColor(accent)
         textSize = 16f
         setPadding(0, dpToPx(12), 0, dpToPx(12))
@@ -322,7 +322,7 @@ private fun MainActivity.showAboutDialog() {
     contentView.addView(githubLink)
 
     val licenseLink = TextView(this).apply {
-        text = "License: LGPL v3"
+        text = getString(R.string.about_license_format, "LGPL v3")
         setTextColor(accent)
         textSize = 16f
         setPadding(0, dpToPx(12), 0, dpToPx(12))

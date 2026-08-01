@@ -1,17 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<!-- Not converted to a compound drawable: the icon is loaded and sized at
+     runtime via IconSize.apply() against a real ImageView, which compound
+     drawables don't support well. -->
+<io.github.hetraeus.kimfuzzy.ClickableLinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="8dp"
-    android:gravity="center">
+    android:gravity="center"
+    tools:ignore="UseCompoundDrawables">
 
     <ImageView
         android:id="@+id/icon"
         android:layout_width="56dp"
         android:layout_height="56dp"
-        android:contentDescription="App icon" />
+        android:contentDescription="@string/content_description_app_icon" />
 
     <TextView
         android:id="@+id/name"
@@ -22,4 +27,4 @@
         android:ellipsize="end"
         android:maxLines="1"
         android:gravity="center" />
-</LinearLayout>
+</io.github.hetraeus.kimfuzzy.ClickableLinearLayout>

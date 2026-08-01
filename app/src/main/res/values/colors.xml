@@ -3,7 +3,6 @@
     <color name="light_bg">#F4ECD8</color>
     <color name="light_text">#3E2B1F</color>
     <color name="light_text_secondary">#5B4636</color>
-    <color name="dark_bg">#121212</color>
     <color name="dark_text">#EEEEEE</color>
     <color name="dark_text_secondary">#BDBDBD</color>
 </resources>

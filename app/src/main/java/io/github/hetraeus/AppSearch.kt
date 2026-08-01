@@ -225,7 +225,7 @@ private fun MainActivity.showAppOptions(app: AppInfo) {
         } else {
             // Show "Annotate app" prompt
             val annotatePrompt = TextView(this).apply {
-                text = "Annotate app"
+                text = getString(R.string.annotate_app)
                 setTextColor(accent)
                 textSize = 14f
                 setPadding(0, 0, 0, dpToPx(12))
@@ -318,7 +318,7 @@ private fun MainActivity.showAnnotationEdit(
     container.addView(btnRow)
 
     val saveBtn = TextView(this).apply {
-        text = "Save"
+        text = getString(R.string.action_save)
         setTextColor(accent)
         textSize = 14f
         setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
@@ -331,7 +331,7 @@ private fun MainActivity.showAnnotationEdit(
     btnRow.addView(saveBtn)
 
     val cancelBtn = TextView(this).apply {
-        text = "Cancel"
+        text = getString(R.string.action_cancel)
         setTextColor(secondaryText)
         textSize = 14f
         setPadding(dpToPx(16), dpToPx(8), 0, dpToPx(8))

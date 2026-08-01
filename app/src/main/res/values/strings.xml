@@ -1,3 +1,45 @@
 <resources>
     <string name="app_name">kimfuzzy</string>
+
+    <!-- Top bar -->
+    <string name="icon_calendar">🗓️</string>
+    <string name="content_description_calendar">Calendar</string>
+    <string name="content_description_settings">Settings</string>
+
+    <!-- Content area -->
+    <string name="text_no_apps_found">No apps found</string>
+    <string name="text_search_app_stores">Search app stores</string>
+
+    <!-- Filter -->
+    <string name="content_description_clear_search">Clear search</string>
+    <string name="hint_search_apps">Search apps…</string>
+    <string name="icon_play">▶</string>
+    <string name="content_description_open_app">Open app</string>
+
+    <!-- Drop zone -->
+    <string name="text_drop_here_to_hide">🗑️ Drop here to hide</string>
+
+    <!-- Black curtain -->
+    <string name="icon_curtain_settings">𑁍</string>
+    <string name="icon_back">&lt;</string>
+    <string name="content_description_exit_curtain">Exit curtain</string>
+
+    <!-- Settings view -->
+    <string name="text_settings_title">Settings</string>
+    <string name="icon_close">✕</string>
+    <string name="content_description_close_settings">Close settings</string>
+
+    <!-- Shared -->
+    <string name="content_description_app_icon">App icon</string>
+
+    <!-- App options / annotation dialogs -->
+    <string name="annotate_app">Annotate app</string>
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+
+    <!-- About dialog -->
+    <string name="about_title" translatable="false">KimFuzzy</string>
+    <string name="about_developer_format">Developer: %1$s</string>
+    <string name="about_github" translatable="false">GitHub</string>
+    <string name="about_license_format">License: %1$s</string>
 </resources>

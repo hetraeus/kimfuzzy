@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "FZF Launcher"
+rootProject.name = "kimfuzzy"
 include(":app")

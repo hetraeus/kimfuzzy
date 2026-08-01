@@ -44,9 +44,9 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:text="🗓️"
+                    android:text="@string/icon_calendar"
                     android:textSize="16sp"
-                    android:contentDescription="Calendar" />
+                    android:contentDescription="@string/content_description_calendar" />
 
                 <TextView
                     android:id="@+id/dateText"
@@ -90,7 +90,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:gravity="center"
                 android:textSize="20sp"
-                android:contentDescription="Settings" />
+                android:contentDescription="@string/content_description_settings" />
         </LinearLayout>
 
         <!-- Content Area -->
@@ -121,7 +121,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
-                android:text="No apps found"
+                android:text="@string/text_no_apps_found"
                 android:textSize="16sp"
                 android:visibility="gone" />
 
@@ -131,7 +131,7 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:layout_marginTop="48dp"
-                android:text="Search app stores"
+                android:text="@string/text_search_app_stores"
                 android:textSize="14sp"
                 android:visibility="gone" />
         </FrameLayout>
@@ -156,7 +156,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_close"
                 android:visibility="gone"
-                android:contentDescription="Clear search" />
+                android:contentDescription="@string/content_description_clear_search" />
 
             <EditText
                 android:id="@+id/filter"
@@ -164,7 +164,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:padding="8dp"
-                android:hint="Search apps..."
+                android:hint="@string/hint_search_apps"
                 android:gravity="center"
                 android:textAlignment="center"
                 android:imeOptions="actionSearch|flagNoExtractUi"
@@ -176,11 +176,11 @@
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:text="▶"
+                android:text="@string/icon_play"
                 android:textSize="24sp"
                 android:gravity="center"
                 android:visibility="gone"
-                android:contentDescription="Open app" />
+                android:contentDescription="@string/content_description_open_app" />
         </LinearLayout>
     </LinearLayout>
 
@@ -192,7 +192,7 @@
         android:layout_gravity="top"
         android:gravity="center"
         android:padding="8dp"
-        android:text="🗑️ Drop here to hide"
+        android:text="@string/text_drop_here_to_hide"
         android:textSize="13sp"
         android:alpha="0.7"
         android:visibility="gone" />
@@ -218,10 +218,10 @@
             android:layout_margin="8dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:gravity="center"
-            android:text="𑁍"
+            android:text="@string/icon_curtain_settings"
             android:textColor="#3D3D3D"
             android:textSize="20sp"
-            android:contentDescription="Settings" />
+            android:contentDescription="@string/content_description_settings" />
 
         <!-- Split screen 3:1; center the exit button in the bottom fourth -->
         <LinearLayout
@@ -246,11 +246,11 @@
                     android:layout_gravity="center"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:gravity="center"
-                    android:text="&lt;"
+                    android:text="@string/icon_back"
                     android:textColor="#FF0000"
                     android:textSize="28sp"
                     android:textStyle="bold"
-                    android:contentDescription="Exit curtain" />
+                    android:contentDescription="@string/content_description_exit_curtain" />
             </FrameLayout>
         </LinearLayout>
     </FrameLayout>
@@ -279,7 +279,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
-                    android:text="Settings"
+                    android:text="@string/text_settings_title"
                     android:textSize="20sp"
                     android:textStyle="bold" />
 
@@ -290,9 +290,9 @@
                     android:layout_gravity="top|end"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:gravity="center"
-                    android:text="✕"
+                    android:text="@string/icon_close"
                     android:textSize="20sp"
-                    android:contentDescription="Close settings" />
+                    android:contentDescription="@string/content_description_close_settings" />
             </FrameLayout>
 
             <View

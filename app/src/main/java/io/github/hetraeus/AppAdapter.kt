@@ -37,14 +37,13 @@ class AppAdapter(
     }
 
     class DiffCallback : DiffUtil.ItemCallback<AppInfo>() {
-        override fun areItemsTheSame(old: AppInfo, new: AppInfo) =
-            old.id == new.id
+      override fun areItemsTheSame(old: AppInfo, new: AppInfo) =
+          old.id == new.id
 
-        override fun areContentsTheSame(old: AppInfo, new: AppInfo) =
-            old.label == new.label &&
-            old.displayName == new.displayName &&
-            old.prefix == new.prefix &&
-            old.icon == new.icon &&
-            old.iconFromPack == new.iconFromPack
-    }
+      override fun areContentsTheSame(old: AppInfo, new: AppInfo) =
+          old.label == new.label &&
+          old.displayName == new.displayName &&
+          old.prefix == new.prefix &&
+          old.iconFromPack == new.iconFromPack
+  }
 }
