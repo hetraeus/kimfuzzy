@@ -24,6 +24,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -193,27 +194,42 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        Prefs.init(this)
-        ThemeUtils.applyTheme(this)
-        super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+    Prefs.init(this)
+    ThemeUtils.applyTheme(this)
+    super.onCreate(savedInstanceState)
+    binding = ActivityMainBinding.inflate(layoutInflater)
+    setContentView(binding.root)
 
-        setupWindow()
-        applyThemeColors()
-        setupTopBar()
-        setupBookmarks()
-        setupAppList()
-        setupFilter()
-        setupKeyboardListener()
-        setupSettings()
-        setupGridTouchListener()
-        setupBlackCurtain()
-        applyBackgroundImage()
+    setupWindow()
+    applyThemeColors()
+    setupTopBar()
+    setupBookmarks()
+    setupAppList()
+    setupFilter()
+    setupKeyboardListener()
+    setupSettings()
+    setupGridTouchListener()
+    setupBlackCurtain()
+    applyBackgroundImage()
 
-        loadApps()
-        handleIntent(intent)
-    }
+    onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() {
+            when {
+                binding.settingsView.visibility == View.VISIBLE -> resetToBookmarks()
+                binding.filterContainer.visibility == View.VISIBLE || isKeyboardVisible -> resetToBookmarks()
+                else -> {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                    isEnabled = true
+                }
+            }
+        }
+    })
+    
+
+    loadApps()
+    handleIntent(intent)
+  }
 
     override fun onResume() {
         super.onResume()
@@ -353,12 +369,4 @@ class MainActivity : AppCompatActivity() {
     }
 
     internal fun onKeyboardVisibilityChanged() {}
-
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        when {
-            binding.settingsView.visibility == View.VISIBLE -> resetToBookmarks()
-            binding.filterContainer.visibility == View.VISIBLE || isKeyboardVisible -> resetToBookmarks()
-        }
-    }
 }
