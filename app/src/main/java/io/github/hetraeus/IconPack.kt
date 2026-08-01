@@ -1,10 +1,12 @@
 package io.github.hetraeus.kimfuzzy
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.Drawable
 import android.util.Log
 import android.util.Xml
+import androidx.core.content.res.ResourcesCompat
 import org.xmlpull.v1.XmlPullParser
 import java.io.IOException
 
@@ -89,7 +91,7 @@ object IconPack {
                     val resId = resolveResourceId(packResources, iconPackPackage, name)
                     if (resId != 0) {
                         try {
-                            val drawable = packResources.getDrawable(resId, context.theme)
+                            val drawable = ResourcesCompat.getDrawable(packResources, resId, context.theme)
                             iconCache[cacheKey] = drawable
                             return drawable to true
                         } catch (e: Exception) {
@@ -103,7 +105,7 @@ object IconPack {
                 val resId = resolveResourceId(packResources, iconPackPackage, name)
                 if (resId != 0) {
                     try {
-                        val drawable = packResources.getDrawable(resId, context.theme)
+                        val drawable = ResourcesCompat.getDrawable(packResources, resId, context.theme)
                         iconCache[cacheKey] = drawable
                         return drawable to true
                     } catch (e: Exception) {
@@ -117,6 +119,7 @@ object IconPack {
         return defaultIcon to false
     }
 
+    @SuppressLint("DiscouragedApi")
     private fun resolveResourceId(resources: android.content.res.Resources, pkg: String, name: String): Int {
         var resId = resources.getIdentifier(name, "drawable", pkg)
         if (resId == 0) resId = resources.getIdentifier(name, "mipmap", pkg)
@@ -169,7 +172,7 @@ object IconPack {
                     "appmap" to "raw"
                 )
                 for ((name, type) in resConfigs) {
-                    val resId = packResources.getIdentifier(name, type, iconPackPackage)
+                    val resId = resolveResourceId(packResources, iconPackPackage, name)
                     if (resId != 0) {
                         val parser = packResources.getXml(resId)
                         parseAppFilterXml(parser, map, packageFallback)
