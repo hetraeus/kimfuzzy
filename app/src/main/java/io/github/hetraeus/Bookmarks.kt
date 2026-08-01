@@ -21,6 +21,25 @@ import kotlin.math.abs
 
 /** The bottom bookmarks grid: layout, drag-to-reorder, tap/long-press, and swipe-up-to-search. */
 
+// Computed from real content-area pixels after layout; these defaults are harmless fallbacks.
+private var gridColumns = 5
+private var gridRows = 7
+
+/** Recompute columns/rows from how many 72dp cells actually fit inside contentArea.
+ *  Tune cellSize if your item_bookmark.xml layout needs more/less space. */
+private fun MainActivity.recomputeGridDimensions() {
+    val cellSize = dpToPx(72) // icon + label + padding; adjust to match item_bookmark.xml
+    val contentWidth = binding.contentArea.width.takeIf { it > 0 }
+        ?: resources.displayMetrics.widthPixels
+    val contentHeight = binding.contentArea.height.takeIf { it > 0 }
+        ?: resources.displayMetrics.heightPixels
+
+    gridColumns = (contentWidth / cellSize).coerceAtLeast(1)
+    gridRows = (contentHeight / cellSize).coerceAtLeast(1)
+
+    (binding.bookmarksGrid.layoutManager as? GridLayoutManager)?.spanCount = gridColumns
+}
+
 internal fun MainActivity.createBookmarkDragListener(): BookmarkAdapter.DragListener {
     val activity = this
     return object : BookmarkAdapter.DragListener {
@@ -127,22 +146,25 @@ internal fun MainActivity.setupBookmarks() {
     )
     val activity = this
     binding.bookmarksGrid.apply {
-        layoutManager = object : GridLayoutManager(activity, calculateSpanCount()) {
+        layoutManager = object : GridLayoutManager(activity, gridColumns) {
             override fun canScrollVertically(): Boolean = false
             override fun canScrollHorizontally(): Boolean = false
         }
         adapter = bookmarkAdapter
     }
-}
 
-private fun MainActivity.calculateSpanCount(): Int = when (resources.configuration.orientation) {
-    android.content.res.Configuration.ORIENTATION_LANDSCAPE -> 7
-    else -> 5
-}
-
-private fun MainActivity.calculateRowCount(): Int = when (resources.configuration.orientation) {
-    android.content.res.Configuration.ORIENTATION_LANDSCAPE -> 5
-    else -> 7
+    // Measure after first layout and recompute on every resize (rotation, split-screen, etc.)
+    binding.contentArea.addOnLayoutChangeListener { _, left, top, right, bottom,
+                                                     oldLeft, oldTop, oldRight, oldBottom ->
+        val newW = right - left
+        val newH = bottom - top
+        val oldW = oldRight - oldLeft
+        val oldH = oldBottom - oldTop
+        if (newW != oldW || newH != oldH) {
+            recomputeGridDimensions()
+            loadBookmarks()
+        }
+    }
 }
 
 internal fun MainActivity.setupGridTouchListener() {
@@ -251,7 +273,7 @@ internal fun MainActivity.setupGridTouchListener() {
 
 internal fun MainActivity.loadBookmarks() {
     val bookmarked = Prefs.getBookmarks()
-    val maxSlots = calculateSpanCount() * calculateRowCount()
+    val maxSlots = (gridColumns * gridRows).coerceAtLeast(1)
     val appsMap = allApps.associateBy { it.id }
 
     val grid = MutableList<AppInfo?>(maxSlots) { null }
