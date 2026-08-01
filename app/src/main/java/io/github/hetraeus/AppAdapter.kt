@@ -44,7 +44,7 @@ class AppAdapter(
             old.label == new.label &&
             old.displayName == new.displayName &&
             old.prefix == new.prefix &&
-            old.icon === new.icon &&
+            old.icon == new.icon &&
             old.iconFromPack == new.iconFromPack
     }
 }
