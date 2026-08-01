@@ -1,5 +1,6 @@
 # Android
 *.iml
+.android/
 .gradle/
 .idea/
 build/
