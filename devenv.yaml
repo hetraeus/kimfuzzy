@@ -2,5 +2,10 @@
 inputs:
   nixpkgs:
     url: github:NixOS/nixpkgs/nixos-26.05
+  android-nixpkgs:
+    url: github:tadfisher/android-nixpkgs
+    inputs:
+      nixpkgs:
+        follows: nixpkgs
 nixpkgs:
   allow_unfree: true
