@@ -22,11 +22,9 @@ import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
-import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -38,7 +36,6 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import io.github.hetraeus.kimfuzzy.databinding.ActivityMainBinding
-import io.github.hetraeus.kimfuzzy.databinding.ItemBookmarkBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -95,142 +92,42 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    internal fun createBookmarkDragListener(): BookmarkAdapter.DragListener {
-        val activity = this
-        return object : BookmarkAdapter.DragListener {
-            override fun onDragStart(
-                holder: BookmarkAdapter.ViewHolder,
-                app: AppInfo,
-                touchX: Float,
-                touchY: Float
-            ) {
-                dragSourcePos = holder.bindingAdapterPosition
-                if (dragSourcePos == RecyclerView.NO_POSITION) return
-
-                draggedApp = app
-                dragTouchOffsetX = touchX
-                dragTouchOffsetY = touchY
-
-                val floatBinding = ItemBookmarkBinding.inflate(layoutInflater)
-                floatBinding.name.text = app.label
-                floatBinding.name.setTextColor(ThemeUtils.getTextColor())
-                IconSize.apply(floatBinding.icon, app.icon, app.iconFromPack)
-
-                val view = floatBinding.root
-                view.measure(
-                    View.MeasureSpec.makeMeasureSpec(holder.binding.root.width, View.MeasureSpec.EXACTLY),
-                    View.MeasureSpec.makeMeasureSpec(holder.binding.root.height, View.MeasureSpec.EXACTLY)
-                )
-                view.layout(0, 0, view.measuredWidth, view.measuredHeight)
-
-                val loc = IntArray(2)
-                holder.binding.root.getLocationOnScreen(loc)
-
-                val contentLoc = IntArray(2)
-                binding.contentArea.getLocationOnScreen(contentLoc)
-
-                val params = FrameLayout.LayoutParams(view.measuredWidth, view.measuredHeight)
-                params.leftMargin = loc[0] - contentLoc[0]
-                params.topMargin = loc[1] - contentLoc[1]
-
-                binding.contentArea.addView(view, params)
-                floatingView = view
-
-                holder.binding.root.isInvisible = true
-            }
-
-            override fun onDragMove(rawX: Float, rawY: Float) {
-                val view = floatingView ?: return
-                val contentLoc = IntArray(2)
-                binding.contentArea.getLocationOnScreen(contentLoc)
-
-                val params = view.layoutParams as FrameLayout.LayoutParams
-                params.leftMargin = (rawX - dragTouchOffsetX - contentLoc[0]).toInt()
-                params.topMargin = (rawY - dragTouchOffsetY - contentLoc[1]).toInt()
-                view.layoutParams = params
-            }
-
-            override fun onDragEnd(rawX: Float, rawY: Float) {
-                floatingView?.let { binding.contentArea.removeView(it) }
-                floatingView = null
-
-                val dropZoneLoc = IntArray(2)
-                binding.dropZone.getLocationOnScreen(dropZoneLoc)
-                val dropZoneHeight = binding.dropZone.height
-                if (dropZoneHeight > 0 && rawY >= dropZoneLoc[1] && rawY <= dropZoneLoc[1] + dropZoneHeight) {
-                    if (dragSourcePos != -1 && draggedApp != null) {
-                        Prefs.removeBookmark(draggedApp!!.id)
-                        loadBookmarks()
-                        Toast.makeText(activity, "Hidden: ${draggedApp!!.label}", Toast.LENGTH_SHORT).show()
-                    }
-                    dragSourcePos = -1
-                    draggedApp = null
-                    return
-                }
-
-                val rvLoc = IntArray(2)
-                binding.bookmarksGrid.getLocationOnScreen(rvLoc)
-                val dropX = rawX - rvLoc[0]
-                val dropY = rawY - rvLoc[1]
-                val child = binding.bookmarksGrid.findChildViewUnder(dropX, dropY)
-                val targetPos = if (child != null) binding.bookmarksGrid.getChildAdapterPosition(child) else -1
-
-                if (targetPos != -1 && targetPos != dragSourcePos && dragSourcePos != -1) {
-                    val mutable = bookmarkAdapter.getItems().toMutableList()
-                    if (mutable[targetPos] == null) {
-                        mutable[targetPos] = mutable[dragSourcePos]
-                        mutable[dragSourcePos] = null
-                        bookmarkAdapter.submitList(mutable)
-                        Prefs.saveBookmarks(mutable.map { it?.id ?: "" })
-                    } else {
-                        bookmarkAdapter.notifyItemChanged(dragSourcePos)
-                    }
-                } else {
-                    if (dragSourcePos != -1) bookmarkAdapter.notifyItemChanged(dragSourcePos)
-                }
-                dragSourcePos = -1
-                draggedApp = null
-            }
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
-    Prefs.init(this)
-    ThemeUtils.applyTheme(this)
-    super.onCreate(savedInstanceState)
-    binding = ActivityMainBinding.inflate(layoutInflater)
-    setContentView(binding.root)
+        Prefs.init(this)
+        ThemeUtils.applyTheme(this)
+        super.onCreate(savedInstanceState)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-    setupWindow()
-    applyThemeColors()
-    setupTopBar()
-    setupBookmarks()
-    setupAppList()
-    setupFilter()
-    setupKeyboardListener()
-    setupSettings()
-    setupGridTouchListener()
-    setupBlackCurtain()
-    applyBackgroundImage()
+        setupWindow()
+        applyThemeColors()
+        setupTopBar()
+        setupBookmarks()
+        setupAppList()
+        setupFilter()
+        setupKeyboardListener()
+        setupSettings()
+        setupGridTouchListener()
+        setupBlackCurtain()
+        applyBackgroundImage()
 
-    onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-        override fun handleOnBackPressed() {
-            when {
-                binding.settingsView.isVisible -> resetToBookmarks()
-                binding.filterContainer.isVisible || isKeyboardVisible -> resetToBookmarks()
-                else -> {
-                    isEnabled = false
-                    onBackPressedDispatcher.onBackPressed()
-                    isEnabled = true
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                when {
+                    binding.settingsView.isVisible -> resetToBookmarks()
+                    binding.filterContainer.isVisible || isKeyboardVisible -> resetToBookmarks()
+                    else -> {
+                        isEnabled = false
+                        onBackPressedDispatcher.onBackPressed()
+                        isEnabled = true
+                    }
                 }
             }
-        }
-    })
-    
+        })
 
-    loadApps()
-    handleIntent(intent)
-  }
+        loadApps()
+        handleIntent(intent)
+    }
 
     override fun onResume() {
         super.onResume()
@@ -295,27 +192,26 @@ class MainActivity : AppCompatActivity() {
     }
 
     internal fun handleConfirmPinShortcut(intent: Intent) {
-    val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
-    val request = launcherApps.getPinItemRequest(intent)
-    if (request != null && request.requestType == LauncherApps.PinItemRequest.REQUEST_TYPE_SHORTCUT) {
-        val shortcutInfo = request.shortcutInfo
-        if (shortcutInfo != null) {
-            if (request.isValid) {
-                request.accept()
-                val pkg = shortcutInfo.`package`
-                val shortcutId = shortcutInfo.id
-                val id = "shortcut:$pkg:$shortcutId"
-                Prefs.addBookmark(id)
-                Toast.makeText(this, "Shortcut bookmarked: ${shortcutInfo.shortLabel}", Toast.LENGTH_SHORT).show()
-                loadApps()
-                handler.postDelayed({ loadApps() }, 500)
+        val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+        val request = launcherApps.getPinItemRequest(intent)
+        if (request != null && request.requestType == LauncherApps.PinItemRequest.REQUEST_TYPE_SHORTCUT) {
+            val shortcutInfo = request.shortcutInfo
+            if (shortcutInfo != null) {
+                if (request.isValid) {
+                    request.accept()
+                    val pkg = shortcutInfo.`package`
+                    val shortcutId = shortcutInfo.id
+                    val id = "shortcut:$pkg:$shortcutId"
+                    Prefs.addBookmark(id)
+                    Toast.makeText(this, "Shortcut bookmarked: ${shortcutInfo.shortLabel}", Toast.LENGTH_SHORT).show()
+                    loadApps()
+                    handler.postDelayed({ loadApps() }, 500)
+                }
             }
         }
     }
-}
 
     internal fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
-
 
     internal fun showKeyboard() {
         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager

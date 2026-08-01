@@ -67,14 +67,14 @@ internal fun MainActivity.createBookmarkDragListener(): BookmarkAdapter.DragList
             val loc = IntArray(2)
             holder.binding.root.getLocationOnScreen(loc)
 
-            val contentLoc = IntArray(2)
-            binding.contentArea.getLocationOnScreen(contentLoc)
+            val rootLoc = IntArray(2)
+            binding.root.getLocationOnScreen(rootLoc)
 
             val params = FrameLayout.LayoutParams(view.measuredWidth, view.measuredHeight)
-            params.leftMargin = loc[0] - contentLoc[0]
-            params.topMargin = loc[1] - contentLoc[1]
+            params.leftMargin = loc[0] - rootLoc[0]
+            params.topMargin = loc[1] - rootLoc[1]
 
-            binding.contentArea.addView(view, params)
+            binding.root.addView(view, params)
             floatingView = view
 
             holder.binding.root.isInvisible = true
@@ -82,18 +82,27 @@ internal fun MainActivity.createBookmarkDragListener(): BookmarkAdapter.DragList
 
         override fun onDragMove(rawX: Float, rawY: Float) {
             val view = floatingView ?: return
-            val contentLoc = IntArray(2)
-            binding.contentArea.getLocationOnScreen(contentLoc)
+            val rootLoc = IntArray(2)
+            binding.root.getLocationOnScreen(rootLoc)
 
             val params = view.layoutParams as FrameLayout.LayoutParams
-            params.leftMargin = (rawX - dragTouchOffsetX - contentLoc[0]).toInt()
-            params.topMargin = (rawY - dragTouchOffsetY - contentLoc[1]).toInt()
-            view.layoutParams = params
+            val tx = rawX - dragTouchOffsetX - rootLoc[0] - params.leftMargin
+            val ty = rawY - dragTouchOffsetY - rootLoc[1] - params.topMargin
+            view.translationX = tx
+            view.translationY = ty
+
+            // Subtle parallax: background scrolls opposite to drag
+            binding.backgroundImage.translationX = tx * -0.03f
+            binding.backgroundImage.translationY = ty * -0.03f
         }
 
         override fun onDragEnd(rawX: Float, rawY: Float) {
-            floatingView?.let { binding.contentArea.removeView(it) }
+            floatingView?.let { binding.root.removeView(it) }
             floatingView = null
+
+            // Reset parallax
+            binding.backgroundImage.translationX = 0f
+            binding.backgroundImage.translationY = 0f
 
             val dropZoneLoc = IntArray(2)
             binding.dropZone.getLocationOnScreen(dropZoneLoc)
