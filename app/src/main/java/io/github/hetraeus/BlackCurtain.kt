@@ -1,5 +1,6 @@
 package io.github.hetraeus.kimfuzzy
 
+import android.annotation.SuppressLint
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Toast
@@ -13,6 +14,7 @@ import kotlin.math.abs
  * Also hides system status bar icons (battery, network, etc.) when active.
  */
 
+@SuppressLint("ClickableViewAccessibility")
 internal fun MainActivity.setupBlackCurtain() {
     binding.curtainSettingsBtn.setOnClickListener {
         showSettingsView()
