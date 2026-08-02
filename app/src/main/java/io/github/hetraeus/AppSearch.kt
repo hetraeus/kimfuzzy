@@ -197,6 +197,7 @@ private fun MainActivity.showAppOptions(app: AppInfo) {
     }
     contentView.addView(annotationContainer)
 
+    lateinit var dialogRef: androidx.appcompat.app.AlertDialog
     fun buildAnnotationSection() {
         annotationContainer.removeAllViews()
         val currentAnnotation = Prefs.getAppAnnotation(app.id)
@@ -209,7 +210,10 @@ private fun MainActivity.showAppOptions(app: AppInfo) {
                 maxLines = 3
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 setPadding(0, 0, 0, dpToPx(12))
-                setOnClickListener { showAnnotationEdit(app, annotationContainer, ::buildAnnotationSection) }
+                setOnClickListener {
+                    dialogRef.dismiss()
+                    showAnnotationEditDialog(app)
+                }
             }
             annotationContainer.addView(annotationView)
         } else {
@@ -218,7 +222,10 @@ private fun MainActivity.showAppOptions(app: AppInfo) {
                 setTextColor(accent)
                 textSize = 14f
                 setPadding(0, 0, 0, dpToPx(12))
-                setOnClickListener { showAnnotationEdit(app, annotationContainer, ::buildAnnotationSection) }
+                setOnClickListener {
+                    dialogRef.dismiss()
+                    showAnnotationEditDialog(app)
+                }
             }
             annotationContainer.addView(annotatePrompt)
         }
@@ -249,7 +256,6 @@ private fun MainActivity.showAppOptions(app: AppInfo) {
         if (isShortcut) "Forget link" to { forgetLink(app) } else "App info" to { showAppInfo(app) }
     )
 
-    lateinit var dialogRef: androidx.appcompat.app.AlertDialog
     for ((label, action) in actions) {
         val btn = TextView(this).apply {
             text = label
@@ -272,65 +278,34 @@ private fun MainActivity.showAppOptions(app: AppInfo) {
     dialog.show()
 }
 
-private fun MainActivity.showAnnotationEdit(
-    app: AppInfo,
-    container: LinearLayout,
-    onSaved: () -> Unit
-) {
-    container.removeAllViews()
-
-    val textColor = ThemeUtils.getTextColor()
-    val accent = ThemeUtils.getAccentColor(this)
-    val secondaryText = ThemeUtils.getSecondaryTextColor()
-
-    val currentAnnotation = Prefs.getAppAnnotation(app.id) ?: ""
-
+private fun MainActivity.showAnnotationEditDialog(app: AppInfo) {
     val input = EditText(this).apply {
-        setText(currentAnnotation)
-        setTextColor(textColor)
-        setHintTextColor(secondaryText)
+        setText(Prefs.getAppAnnotation(app.id) ?: "")
+        setTextColor(ThemeUtils.getTextColor())
+        setHintTextColor(ThemeUtils.getSecondaryTextColor())
         hint = "Why did you install this app?"
         setBackgroundColor(Color.TRANSPARENT)
-        maxLines = 3
-        minLines = 1
-        gravity = android.view.Gravity.TOP
-        setPadding(0, dpToPx(8), 0, dpToPx(8))
-    }
-    container.addView(input)
-
-    val btnRow = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = android.view.Gravity.END
-    }
-    container.addView(btnRow)
-
-    val saveBtn = TextView(this).apply {
-        text = getString(R.string.action_save)
-        setTextColor(accent)
-        textSize = 14f
         setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
-        setOnClickListener {
+        minLines = 1
+        maxLines = 3
+    }
+
+    val dialog = MaterialAlertDialogBuilder(this)
+        .setTitle(app.label)
+        .setView(input)
+        .setPositiveButton(getString(R.string.action_save)) { _, _ ->
             val text = input.text?.toString()?.trim() ?: ""
             Prefs.setAppAnnotation(app.id, text)
-            onSaved()
         }
-    }
-    btnRow.addView(saveBtn)
+        .setNegativeButton(getString(R.string.action_cancel), null)
+        .create()
 
-    val cancelBtn = TextView(this).apply {
-        text = getString(R.string.action_cancel)
-        setTextColor(secondaryText)
-        textSize = 14f
-        setPadding(dpToPx(16), dpToPx(8), 0, dpToPx(8))
-        setOnClickListener {
-            onSaved()
-        }
+    dialog.setOnShowListener {
+        input.requestFocus()
+        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
     }
-    btnRow.addView(cancelBtn)
 
-    input.requestFocus()
-    val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-    imm.showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
+    dialog.show()
 }
 
 private fun MainActivity.forgetLink(app: AppInfo) {
@@ -342,7 +317,7 @@ private fun MainActivity.forgetLink(app: AppInfo) {
             Toast.makeText(this, "Forgot: ${app.label}", Toast.LENGTH_SHORT).show()
             loadApps()
         }
-        .setNegativeButton("Cancel", null)
+        .setNegativeButton(getString(R.string.action_cancel), null)
         .show()
 }
 
@@ -359,12 +334,12 @@ private fun MainActivity.editPrefix(app: AppInfo) {
     val dialog = MaterialAlertDialogBuilder(this)
         .setTitle("Edit suffix for ${app.label}")
         .setView(input)
-        .setPositiveButton("Save") { _, _ ->
+        .setPositiveButton(getString(R.string.action_save)) { _, _ ->
             val suffix = input.text?.toString()?.trim() ?: ""
             Prefs.setAppPrefix(app.id, suffix)
             loadApps()
         }
-        .setNegativeButton("Cancel", null)
+        .setNegativeButton(getString(R.string.action_cancel), null)
         .create()
 
     dialog.setOnShowListener {

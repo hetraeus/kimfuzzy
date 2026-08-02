@@ -7,7 +7,6 @@ import android.graphics.Color
 import android.os.Build
 import android.provider.AlarmClock
 import android.provider.CalendarContract
-import android.view.View
 import android.widget.Toast
 import androidx.core.graphics.get
 import androidx.core.net.toUri
@@ -51,10 +50,6 @@ internal fun MainActivity.applyThemeColors() {
     binding.calendarBtn.setTextColor(accent)
     binding.clearBtn.setColorFilter(accent)
     binding.playBtn.setTextColor(accent)
-
-    binding.dropZone.setTextColor(textSecondary)
-    binding.dropZone.setBackgroundColor(bg)
-    binding.dropZone.visibility = if (Prefs.getEditMode()) View.VISIBLE else View.GONE
 
     updateEditModeIcon()
 }

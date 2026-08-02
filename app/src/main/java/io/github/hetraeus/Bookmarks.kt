@@ -12,7 +12,6 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.FrameLayout
-import android.widget.Toast
 import androidx.core.view.isInvisible
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -31,13 +30,13 @@ private fun MainActivity.recomputeGridDimensions() {
         ?: resources.displayMetrics.heightPixels
 
     gridColumns = (contentWidth / cellSize).coerceAtLeast(1)
-    gridRows = (contentHeight / cellSize).coerceAtLeast(1)
+    gridRows = (contentHeight / cellSize).coerceAtLeast(1).coerceAtMost(7)
 
     (binding.bookmarksGrid.layoutManager as? GridLayoutManager)?.spanCount = gridColumns
 }
 
 internal fun MainActivity.createBookmarkDragListener(): BookmarkAdapter.DragListener {
-    val activity = this
+    var dragHolder: BookmarkAdapter.ViewHolder? = null
     return object : BookmarkAdapter.DragListener {
         override fun onDragStart(
             holder: BookmarkAdapter.ViewHolder,
@@ -48,6 +47,7 @@ internal fun MainActivity.createBookmarkDragListener(): BookmarkAdapter.DragList
             dragSourcePos = holder.bindingAdapterPosition
             if (dragSourcePos == RecyclerView.NO_POSITION) return
 
+            dragHolder = holder
             draggedApp = app
             dragTouchOffsetX = touchX
             dragTouchOffsetY = touchY
@@ -90,63 +90,77 @@ internal fun MainActivity.createBookmarkDragListener(): BookmarkAdapter.DragList
             val ty = rawY - dragTouchOffsetY - rootLoc[1] - params.topMargin
             view.translationX = tx
             view.translationY = ty
-
-            // Subtle parallax: background scrolls opposite to drag
-            binding.backgroundImage.translationX = tx * -0.03f
-            binding.backgroundImage.translationY = ty * -0.03f
         }
 
-        override fun onDragEnd(rawX: Float, rawY: Float) {
-            floatingView?.let { binding.root.removeView(it) }
-            floatingView = null
+    override fun onDragEnd(rawX: Float, rawY: Float) {
+        floatingView?.let { binding.root.removeView(it) }
+        floatingView = null
 
-            // Reset parallax
-            binding.backgroundImage.translationX = 0f
-            binding.backgroundImage.translationY = 0f
+        // The source slot's view was made invisible in onDragStart so the
+        // floating copy could stand in for it while dragging. DiffUtil may
+        // treat the underlying item as merely "moved" (same id/content) and
+        // reuse this exact ViewHolder without calling onBindViewHolder again,
+        // which would leave it permanently invisible. Restore it directly
+        // regardless of which case below runs.
+        dragHolder?.binding?.root?.isInvisible = false
+        dragHolder = null
 
-            val dropZoneLoc = IntArray(2)
-            binding.dropZone.getLocationOnScreen(dropZoneLoc)
-            val dropZoneHeight = binding.dropZone.height
-            if (dropZoneHeight > 0 && rawY >= dropZoneLoc[1] && rawY <= dropZoneLoc[1] + dropZoneHeight) {
-                if (dragSourcePos != -1 && draggedApp != null) {
-                    Prefs.removeBookmark(draggedApp!!.id)
-                    loadBookmarks()
-                    Toast.makeText(activity, "Hidden: ${draggedApp!!.label}", Toast.LENGTH_SHORT).show()
-                }
-                dragSourcePos = -1
-                draggedApp = null
-                return
-            }
+        // Dropped on valid grid slot
+        val rvLoc = IntArray(2)
+        binding.bookmarksGrid.getLocationOnScreen(rvLoc)
+        val dropX = rawX - rvLoc[0]
+        val dropY = rawY - rvLoc[1]
+        val child = binding.bookmarksGrid.findChildViewUnder(dropX, dropY)
+        val targetPos = if (child != null) binding.bookmarksGrid.getChildAdapterPosition(child) else -1
 
-            val rvLoc = IntArray(2)
-            binding.bookmarksGrid.getLocationOnScreen(rvLoc)
-            val dropX = rawX - rvLoc[0]
-            val dropY = rawY - rvLoc[1]
-            val child = binding.bookmarksGrid.findChildViewUnder(dropX, dropY)
-            val targetPos = if (child != null) binding.bookmarksGrid.getChildAdapterPosition(child) else -1
+        val mutable = bookmarkAdapter.getItems().toMutableList()
 
-            if (targetPos != -1 && targetPos != dragSourcePos && dragSourcePos != -1) {
-                val mutable = bookmarkAdapter.getItems().toMutableList()
-                if (mutable[targetPos] == null) {
-                    mutable[targetPos] = mutable[dragSourcePos]
-                    mutable[dragSourcePos] = null
-                    bookmarkAdapter.submitList(mutable)
-                    Prefs.saveBookmarks(mutable.map { it?.id ?: "" })
-                } else {
-                    bookmarkAdapter.notifyItemChanged(dragSourcePos)
-                }
+        if (targetPos != -1 && targetPos != dragSourcePos && dragSourcePos in mutable.indices) {
+            // Case 1: Valid reorder - always move, whether slot is empty or occupied
+            val draggedAppItem = mutable[dragSourcePos] ?: return
+
+            if (mutable[targetPos] == null) {
+                // Target is empty - just move into it
+                mutable[targetPos] = draggedAppItem
+                mutable[dragSourcePos] = null
             } else {
-                if (dragSourcePos != -1) bookmarkAdapter.notifyItemChanged(dragSourcePos)
+                // Target is occupied - swap positions
+                val targetAppItem = mutable[targetPos]!!
+                mutable[targetPos] = draggedAppItem
+                mutable[dragSourcePos] = targetAppItem
             }
-            dragSourcePos = -1
-            draggedApp = null
+
+            // The floating copy already carried the icon visually to the
+            // drop point, so the default RecyclerView "move" animation here
+            // would be redundant: it'd first flash the real view back at its
+            // old slot, then slide it over to the new one. Suppress the
+            // animator for this one update so the view snaps directly into
+            // its final slot instead, matching where the floating copy was
+            // released. Restored after the layout pass that consumes it.
+            val grid = binding.bookmarksGrid
+            val savedAnimator = grid.itemAnimator
+            grid.itemAnimator = null
+            bookmarkAdapter.submitList(mutable)
+            grid.post { grid.itemAnimator = savedAnimator }
+
+            Prefs.saveBookmarks(mutable.map { it?.id ?: "" })
+        } else {
+            // Case 2: Invalid drop location - restore the original position
+            if (dragSourcePos in mutable.indices) {
+                bookmarkAdapter.notifyItemChanged(dragSourcePos)
+            }
         }
+
+        dragSourcePos = -1
+        draggedApp = null
+    }
     }
 }
 
 internal fun MainActivity.setupBookmarks() {
     bookmarkAdapter = BookmarkAdapter(
         onRename = { app -> renameBookmark(app) },
+        onShowOptions = if (Prefs.getEditMode()) { app -> showBookmarkOptions(app) } else null,
         dragListener = if (Prefs.getEditMode()) createBookmarkDragListener() else null
     )
     val activity = this
@@ -322,7 +336,7 @@ private fun MainActivity.showAddBookmarkDialog(app: AppInfo) {
             Prefs.addBookmark(app.id)
             loadBookmarks()
         }
-        .setNegativeButton("Cancel", null)
+        .setNegativeButton(getString(R.string.action_cancel), null)
         .create()
 
     dialog.setOnShowListener {
@@ -346,12 +360,12 @@ internal fun MainActivity.renameBookmark(app: AppInfo) {
     val dialog = MaterialAlertDialogBuilder(this)
         .setTitle("Rename bookmark")
         .setView(input)
-        .setPositiveButton("Save") { _, _ ->
+        .setPositiveButton(getString(R.string.action_save)) { _, _ ->
             val newLabel = input.text?.toString()?.trim() ?: ""
             Prefs.setCustomLabel(app.id, newLabel)
             loadBookmarks()
         }
-        .setNegativeButton("Cancel", null)
+        .setNegativeButton(getString(R.string.action_cancel), null)
         .create()
 
     dialog.setOnShowListener {
@@ -362,7 +376,7 @@ internal fun MainActivity.renameBookmark(app: AppInfo) {
     dialog.show()
 }
 
-private fun MainActivity.showBookmarkOptions(app: AppInfo) {
+internal fun MainActivity.showBookmarkOptions(app: AppInfo) {
     val textColor = ThemeUtils.getTextColor()
     val accent = ThemeUtils.getAccentColor(this)
     val secondaryText = ThemeUtils.getSecondaryTextColor()
@@ -477,12 +491,12 @@ private fun MainActivity.showBookmarkAnnotationEdit(app: AppInfo, onSaved: () ->
     val dialog = MaterialAlertDialogBuilder(this)
         .setTitle("Annotate ${app.label}")
         .setView(input)
-        .setPositiveButton("Save") { _, _ ->
+        .setPositiveButton(getString(R.string.action_save)) { _, _ ->
             val text = input.text?.toString()?.trim() ?: ""
             Prefs.setAppAnnotation(app.id, text)
             onSaved()
         }
-        .setNegativeButton("Cancel") { _, _ ->
+        .setNegativeButton(getString(R.string.action_cancel)) { _, _ ->
             onSaved()
         }
         .create()

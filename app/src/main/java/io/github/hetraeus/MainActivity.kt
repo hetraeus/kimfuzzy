@@ -29,6 +29,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
@@ -73,6 +74,38 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Background image set", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 Toast.makeText(this, "Failed to set background image", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    internal val importSettingsLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let {
+            try {
+                contentResolver.openInputStream(it)?.use { stream ->
+                    val json = stream.bufferedReader().use { reader -> reader.readText() }
+                    if (Prefs.import(json)) {
+                        Toast.makeText(this, "Settings imported. Restarting...", Toast.LENGTH_SHORT).show()
+                        recreate()
+                    } else {
+                        Toast.makeText(this, "Invalid settings JSON", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this, "Failed to read settings file", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    internal val exportSettingsLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        uri?.let {
+            try {
+                contentResolver.openOutputStream(it)?.use { stream ->
+                    val json = Prefs.export()
+                    stream.write(json.toByteArray(Charsets.UTF_8))
+                    Toast.makeText(this, "Settings exported to file", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this, "Failed to save settings file", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -152,7 +185,6 @@ class MainActivity : AppCompatActivity() {
         if (Prefs.getEditMode()) {
             Prefs.setEditMode(false)
             updateEditModeIcon()
-            binding.dropZone.isVisible = false
             bookmarkAdapter = BookmarkAdapter(
                 onRename = { app -> renameBookmark(app) },
                 dragListener = null

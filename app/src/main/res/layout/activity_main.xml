@@ -32,7 +32,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:padding="16dp"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp"
             android:gravity="center_vertical">
 
             <!-- Left group: calendar icon + date -->
@@ -117,8 +118,11 @@
                 android:id="@+id/appList"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:padding="8dp"
-                android:clipToPadding="false"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="0dp"
+                android:paddingBottom="0dp"
+                android:clipToPadding="true"
                 android:visibility="gone" />
 
             <TextView
@@ -148,10 +152,10 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp"
-            android:paddingStart="4dp"
-            android:paddingEnd="4dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:paddingStart="2dp"
+            android:paddingEnd="2dp"
             android:visibility="gone">
 
             <ImageButton
@@ -169,10 +173,11 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:padding="8dp"
+                android:padding="4dp"
                 android:hint="@string/hint_search_apps"
                 android:gravity="center"
                 android:textAlignment="center"
+                android:textSize="16sp"
                 android:imeOptions="actionSearch|flagNoExtractUi"
                 android:inputType="text"
                 android:background="@android:color/transparent" />
@@ -189,19 +194,6 @@
                 android:contentDescription="@string/content_description_open_app" />
         </LinearLayout>
     </LinearLayout>
-
-    <!-- Drop Zone overlay at top -->
-    <TextView
-        android:id="@+id/dropZone"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top"
-        android:gravity="center"
-        android:padding="8dp"
-        android:text="@string/text_drop_here_to_hide"
-        android:textSize="13sp"
-        android:alpha="0.7"
-        android:visibility="gone" />
 
     <!-- Black Curtain: opaque overlay for distraction-free PiP video watching.
          Sits on top of everything. Blocks all touches except a swipe-up

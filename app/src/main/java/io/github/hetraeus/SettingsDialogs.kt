@@ -5,14 +5,15 @@ import android.content.Intent
 import android.graphics.Color
 import android.provider.Settings
 import android.view.View
-import android.view.WindowManager
-import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.core.view.isVisible
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 internal fun MainActivity.setupSettings() {
     binding.settingsBtn.setOnClickListener {
@@ -107,9 +108,9 @@ private fun MainActivity.toggleEditMode() {
     val editMode = Prefs.getEditMode()
     Prefs.setEditMode(!editMode)
     updateEditModeIcon()
-    binding.dropZone.isVisible = Prefs.getEditMode()
     bookmarkAdapter = BookmarkAdapter(
         onRename = { app -> renameBookmark(app) },
+        onShowOptions = if (Prefs.getEditMode()) { app -> showBookmarkOptions(app) } else null,
         dragListener = if (Prefs.getEditMode()) createBookmarkDragListener() else null
     )
     binding.bookmarksGrid.adapter = bookmarkAdapter
@@ -161,39 +162,13 @@ private fun MainActivity.showBackgroundImagePicker() {
 }
 
 private fun MainActivity.exportSettings() {
-    val json = Prefs.export()
-    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-    val clip = android.content.ClipData.newPlainText("launcher_settings", json)
-    clipboard.setPrimaryClip(clip)
-    Toast.makeText(this, "Settings copied to clipboard", Toast.LENGTH_SHORT).show()
+    val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+    val fileName = "kimfuzzy_settings_$timestamp.json"
+    exportSettingsLauncher.launch(fileName)
 }
 
 private fun MainActivity.importSettings() {
-    val input = EditText(this).apply {
-        hint = "Paste settings JSON here..."
-        setTextColor(ThemeUtils.getTextColor())
-        setHintTextColor(ThemeUtils.getSecondaryTextColor())
-        setBackgroundColor(Color.TRANSPARENT)
-        setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8))
-        minLines = 4
-    }
-
-    MaterialAlertDialogBuilder(this)
-        .setTitle("Import settings")
-        .setView(input)
-        .setPositiveButton("Import") { _, _ ->
-            val json = input.text?.toString()?.trim() ?: ""
-            if (json.isNotEmpty()) {
-                if (Prefs.import(json)) {
-                    Toast.makeText(this, "Settings imported. Restarting...", Toast.LENGTH_SHORT).show()
-                    recreate()
-                } else {
-                    Toast.makeText(this, "Invalid settings JSON", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-        .setNegativeButton("Cancel", null)
-        .show()
+    importSettingsLauncher.launch(arrayOf("application/json", "text/plain"))
 }
 
 private fun MainActivity.showThemePicker() {

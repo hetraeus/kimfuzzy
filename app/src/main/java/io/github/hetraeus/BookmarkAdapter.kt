@@ -1,5 +1,7 @@
 package io.github.hetraeus.kimfuzzy
 
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -13,6 +15,7 @@ import kotlin.math.abs
 
 class BookmarkAdapter(
     private val onRename: ((AppInfo) -> Unit)? = null,
+    private val onShowOptions: ((AppInfo) -> Unit)? = null,
     private val dragListener: DragListener? = null
 ) : RecyclerView.Adapter<BookmarkAdapter.ViewHolder>() {
 
@@ -86,20 +89,32 @@ class BookmarkAdapter(
 
             if (dragListener != null) {
                 val dragThreshold = 28f * holder.binding.root.context.resources.displayMetrics.density
+                val longPressTimeout = 800L
                 var hasMoved = false
                 var startRawX = 0f
                 var startRawY = 0f
+                val handler = Handler(Looper.getMainLooper())
+                var longPressRunnable: Runnable? = null
+
+                fun cancelLongPress() {
+                    longPressRunnable?.let { handler.removeCallbacks(it) }
+                    longPressRunnable = null
+                }
 
                 holder.binding.root.isClickable = true
-                holder.binding.root.setOnClickListener {
-                    onRename?.invoke(app)
-                }
+                holder.binding.root.setOnClickListener(null)
                 holder.binding.root.setOnTouchListener { _, event ->
                     when (event.actionMasked) {
                         MotionEvent.ACTION_DOWN -> {
                             hasMoved = false
                             startRawX = event.rawX
                             startRawY = event.rawY
+                            longPressRunnable = Runnable {
+                                if (!hasMoved) {
+                                    onShowOptions?.invoke(app)
+                                }
+                            }
+                            handler.postDelayed(longPressRunnable!!, longPressTimeout)
                             true
                         }
                         MotionEvent.ACTION_MOVE -> {
@@ -107,6 +122,7 @@ class BookmarkAdapter(
                             val dy = abs(event.rawY - startRawY)
                             if (!hasMoved && (dx > dragThreshold || dy > dragThreshold)) {
                                 hasMoved = true
+                                cancelLongPress()
                                 val loc = IntArray(2)
                                 holder.binding.root.getLocationOnScreen(loc)
                                 dragListener.onDragStart(
@@ -120,11 +136,16 @@ class BookmarkAdapter(
                             true
                         }
                         MotionEvent.ACTION_UP -> {
-                            if (hasMoved) dragListener.onDragEnd(event.rawX, event.rawY)
-                            else holder.binding.root.performClick()
+                            cancelLongPress()
+                            if (hasMoved) {
+                                dragListener.onDragEnd(event.rawX, event.rawY)
+                            } else {
+                                holder.binding.root.performClick()
+                            }
                             true
                         }
                         MotionEvent.ACTION_CANCEL -> {
+                            cancelLongPress()
                             if (hasMoved) dragListener.onDragEnd(event.rawX, event.rawY)
                             true
                         }
