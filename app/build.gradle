@@ -4,24 +4,24 @@ plugins {
 }
 
 android {
-    namespace = 'io.github.hetraeus.kimfuzzy'
-    compileSdk = 36
+    namespace 'io.github.hetraeus.kimfuzzy'
+    compileSdk 36
 
     defaultConfig {
-        applicationId = 'io.github.hetraeus.kimfuzzy'
-        minSdk = 26
-        targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        applicationId 'io.github.hetraeus.kimfuzzy'
+        minSdk 26
+        targetSdk 36
+        versionCode 1
+        versionName "1.0"
     }
 
     buildFeatures {
-        viewBinding = true
+        viewBinding true
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     kotlinOptions {
