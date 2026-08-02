@@ -27,42 +27,42 @@ image:https://img.shields.io/badge/Android-8.0%2B-green.svg[Android, link=https:
 
 == Screenshots
 
-image::docs/screenshots/light-mode.jpg[Light mode,300]
+image::docs/screenshots/light-mode.jpg[Light mode,250]
 
 *Light mode* — a warm, sepia-inspired palette for daytime use.
 
-image::docs/screenshots/dark-mode.jpg[Dark mode,300]
+image::docs/screenshots/dark-mode.jpg[Dark mode,250]
 
 *Dark mode* — a low-glare palette for night use.
 
-image::docs/screenshots/filter.jpg[Filter/search,300]
+image::docs/screenshots/filter.jpg[Filter/search,250]
 
 *Filter/search* — fuzzy-search all installed apps and shortcuts as you type.
 
-image::docs/screenshots/annotation.jpg[App annotation,300]
+image::docs/screenshots/annotation.jpg[App annotation,250]
 
 *App annotation* — jot down why you installed an app, so future-you remembers.
 
-image::docs/screenshots/settings.jpg[Settings,300]
+image::docs/screenshots/settings.jpg[Settings,250]
 
 *Settings* — appearance, bookmarks, and setup options in one full-screen view.
 
-image::docs/screenshots/curtain.jpg[Black Curtain,300]
+image::docs/screenshots/curtain.jpg[Black Curtain,250]
 
 *Black Curtain* — an opaque overlay for distraction-free PiP video watching.
 
-image::docs/screenshots/zzz.jpg[Hidden apps via zzz,300]
+image::docs/screenshots/zzz.jpg[Hidden apps via zzz,250]
 
 *Hidden apps* — type "zzz" to reveal apps you've buried from normal search results.
 
 == Build
 
+A devenv.nix environment is provided. Generate the apk with:
+
 [source,bash]
 ----
 ./gradlew assembleDebug
 ----
-
-Requires **Android SDK 34** and **Kotlin 1.9+**.
 
 == Install
 
@@ -81,24 +81,6 @@ Then open *Settings → Set as Default Launcher* inside the app.
 * *Long-press* a search result for options (pin, bookmark, edit suffix, app info).
 * *Tap 𑁍* to open settings.
 * *Tap ✏️* in settings to enter bookmark edit mode (drag to reorder, drag to 🗑️ to hide).
-
-== Architecture
-
-[source]
-----
-MainActivity.kt          — Activity lifecycle, window insets, intent handling
-TopBar.kt                — Date, time, next alarm display
-Bookmarks.kt             — Grid layout, drag-and-drop, touch handling
-AppSearch.kt             — RecyclerView filter, app launching, app options dialog
-AppLoading.kt            — PackageManager scan, icon resolution, caching
-AppCache.kt              — Disk cache for app metadata + icon bitmaps
-IconPack.kt              — appfilter.xml parser for third-party icon packs
-FzfScorer.kt             — Fuzzy matching algorithm
-ThemeUtils.kt            — Light / Dark color resolution
-Prefs.kt                 — SharedPreferences wrapper + JSON export/import
-SettingsDialogs.kt       — Settings UI builders
-BlackCurtain.kt          — Distraction-free overlay
-----
 
 == License
 
