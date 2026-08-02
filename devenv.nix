@@ -3,7 +3,7 @@
 {
   android = {
     enable = true;
-    platforms.version = [ "36" ];
-    buildTools.version = [ "35.0.0" ];
+    platforms.version = [ "37-0" ];
+    buildTools.version = [ "37.0.0" ];
   };
 }
