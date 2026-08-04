@@ -92,8 +92,11 @@ object FzfScorer {
                 score -= firstMatchPos
             }
 
-            if (qIdx >= query.length && score > bestScore) {
-                bestScore = score
+            if (qIdx >= query.length) {
+                val finalScore = score.coerceAtLeast(1)
+                if (finalScore > bestScore) {
+                    bestScore = finalScore
+                }
             }
         }
 
