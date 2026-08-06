@@ -82,6 +82,8 @@ Then open *Settings → Set as Default Launcher* inside the app.
 * *Tap 𑁍* to open settings.
 * *Tap ✏️* in settings to enter bookmark edit mode (drag to reorder, drag to 🗑️ to hide).
 
+Widgets are not directly supported. To access few of their functionalities you may want to install a shortcut app, such as Shortcut Maker.
+
 == License
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
