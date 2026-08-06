@@ -30,8 +30,8 @@ object IconSize {
         if (iconPack.isNotBlank() && icon != null && fromPack) {
             val theme = Prefs.getTheme()
             val iconTint = when (theme) {
-                "dark" -> Color.WHITE
-                else -> "#3E2B1F".toColorInt()
+              "dark" -> android.graphics.Color.parseColor("#BEBCBC")
+              else -> "#3E2B1F".toColorInt()
             }
 
             val mutableIcon = icon.mutate()

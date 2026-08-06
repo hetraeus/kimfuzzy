@@ -90,18 +90,18 @@ private fun MainActivity.buildSettingsOptions() {
     val curtainOn = Prefs.getBlackCurtain()
 
     sectionHeader("Appearance")
-    optionItem(if (curtainOn) "⚫ Disable Black Curtain" else "⚫ Enable Black Curtain", { toggleBlackCurtain() }, true)
-    optionItem("Theme", { showThemePicker() })
-    optionItem("Icon Size", { showIconSizePicker() })
-    optionItem("Icon Pack", { showIconPackPicker() })
-    optionItem("Background Image", { showBackgroundImagePicker() })
-    optionItem(if (editMode) "💮 Lock bookmarks" else "✏️ Edit bookmarks", { toggleEditMode() }, true)
+    optionItem(if (curtainOn) "🐈‍⬛ disable black curtain" else "🐈‍⬛ enable black curtain", { toggleBlackCurtain() }, true)
+    optionItem("theme", { showThemePicker() })
+    optionItem("icon size", { showIconSizePicker() })
+    optionItem("icon pack", { showIconPackPicker() })
+    optionItem("background image", { showBackgroundImagePicker() })
+    optionItem(if (editMode) "💮 lock bookmarks" else "✏️ edit bookmarks", { toggleEditMode() }, true)
 
     sectionHeader("Setup")
-    optionItem("Export settings", { exportSettings() })
-    optionItem("Import settings", { importSettings() })
-    optionItem("Set as Default Launcher", { promptSetDefaultLauncher() })
-    optionItem("About", { showAboutDialog() })
+    optionItem("export settings", { exportSettings() })
+    optionItem("import settings", { importSettings() })
+    optionItem("set as default launcher", { promptSetDefaultLauncher() })
+    optionItem("about", { showAboutDialog() })
 }
 
 private fun MainActivity.toggleEditMode() {
