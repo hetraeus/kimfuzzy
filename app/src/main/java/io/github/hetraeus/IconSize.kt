@@ -30,7 +30,7 @@ object IconSize {
         if (iconPack.isNotBlank() && icon != null && fromPack) {
             val theme = Prefs.getTheme()
             val iconTint = when (theme) {
-              "dark" -> android.graphics.Color.parseColor("#BEBCBC")
+              "dark" -> "#BEBCBC".toColorInt()
               else -> "#3E2B1F".toColorInt()
             }
 
