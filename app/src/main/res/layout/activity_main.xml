@@ -182,16 +182,6 @@
                 android:inputType="text"
                 android:background="@android:color/transparent" />
 
-            <TextView
-                android:id="@+id/playBtn"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:text="@string/icon_play"
-                android:textSize="24sp"
-                android:gravity="center"
-                android:visibility="gone"
-                android:contentDescription="@string/content_description_open_app" />
         </LinearLayout>
     </LinearLayout>
 

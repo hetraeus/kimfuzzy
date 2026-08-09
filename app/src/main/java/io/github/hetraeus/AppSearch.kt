@@ -67,23 +67,12 @@ internal fun MainActivity.setupFilter() {
             val query = s?.toString() ?: ""
             val hasText = query.isNotEmpty()
             binding.clearBtn.isVisible = hasText
-            binding.playBtn.isVisible = hasText
             filterApps(query)
         }
     })
 
     binding.clearBtn.setOnClickListener {
         binding.filter.text?.clear()
-    }
-
-    binding.playBtn.setOnClickListener {
-        val query = binding.filter.text?.toString() ?: ""
-        if (query.isNotEmpty()) {
-            val filteredApps = appAdapter.currentList
-            if (filteredApps.isNotEmpty()) {
-                launchApp(filteredApps[0])
-            }
-        }
     }
 
     binding.appStoresLookup.setOnClickListener {

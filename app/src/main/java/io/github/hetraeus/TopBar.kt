@@ -49,7 +49,6 @@ internal fun MainActivity.applyThemeColors() {
     binding.settingsBtn.setTextColor(accent)
     binding.calendarBtn.setTextColor(accent)
     binding.clearBtn.setColorFilter(accent)
-    binding.playBtn.setTextColor(accent)
 
     updateEditModeIcon()
 }
