@@ -31,6 +31,7 @@ internal fun MainActivity.setupSettings() {
 
 internal fun MainActivity.showSettingsView() {
     hideKeyboard()
+    setSystemUiVisibility(hide = false)   // ← status bar visible while settings open
     binding.blackCurtain.isVisible = false
     binding.bookmarksGrid.isVisible = false
     binding.filterContainer.isVisible = false

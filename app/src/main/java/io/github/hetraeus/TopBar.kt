@@ -55,19 +55,24 @@ internal fun MainActivity.applyThemeColors() {
 
 internal fun MainActivity.applyBackgroundImage() {
     val bgUri = Prefs.getBackgroundImage(Prefs.currentBackgroundBucket())
-    if (bgUri != null) {
-        try {
-            val uri = bgUri.toUri()
-            contentResolver.openInputStream(uri)?.use { stream ->
-                val bitmap = android.graphics.BitmapFactory.decodeStream(stream)
-                binding.backgroundImage.setImageBitmap(bitmap)
-            }
-        } catch (e: Exception) {
-            binding.backgroundImage.setImageDrawable(null)
-            Prefs.setBackgroundImage(Prefs.currentBackgroundBucket(), null)
-        }
-    } else {
+    if (bgUri == null) {
         binding.backgroundImage.setImageDrawable(null)
+        return
+    }
+    try {
+        val uri = bgUri.toUri()
+        val bitmap = contentResolver.openInputStream(uri)?.use { stream ->
+            android.graphics.BitmapFactory.decodeStream(stream)
+        }
+        if (bitmap != null) {
+            binding.backgroundImage.setImageBitmap(bitmap)
+        } else {
+            binding.backgroundImage.setImageDrawable(null)
+        }
+    } catch (e: Exception) {
+        // Do NOT clear the pref here. On cold boot the provider may not
+        // be ready yet; wiping the pref would permanently lose the image.
+        android.util.Log.w("MainActivity", "Failed to load background image", e)
     }
 }
 

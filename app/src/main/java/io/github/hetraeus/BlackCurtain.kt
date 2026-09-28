@@ -49,7 +49,9 @@ internal fun MainActivity.setupBlackCurtain() {
 }
 
 internal fun MainActivity.applyBlackCurtainState() {
-    val shouldShow = Prefs.getBlackCurtain() && !binding.filterContainer.isVisible
+    val shouldShow = Prefs.getBlackCurtain() &&
+                     !binding.filterContainer.isVisible &&
+                     !binding.settingsView.isVisible
     binding.blackCurtain.isVisible = shouldShow
     setSystemUiVisibility(hide = shouldShow)
 }

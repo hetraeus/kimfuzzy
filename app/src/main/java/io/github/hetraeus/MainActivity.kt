@@ -65,10 +65,24 @@ class MainActivity : AppCompatActivity() {
 
     internal var pendingBackgroundBucket: String = "light"
 
-    internal val pickImageLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+    internal val pickImageLauncher = registerForActivityResult(
+        object : androidx.activity.result.contract.ActivityResultContract<Array<String>, android.net.Uri?>() {
+            override fun createIntent(context: Context, input: Array<String>) =
+                Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "*/*"
+                    putExtra(Intent.EXTRA_MIME_TYPES, input)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                             Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+                }
+            override fun parseResult(resultCode: Int, intent: Intent?): android.net.Uri? =
+                if (resultCode == android.app.Activity.RESULT_OK) intent?.data else null
+        }
+    ) { uri ->
         uri?.let {
             try {
-                contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                contentResolver.takePersistableUriPermission(
+                    it, Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 Prefs.setBackgroundImage(pendingBackgroundBucket, it.toString())
                 applyBackgroundImage()
                 Toast.makeText(this, "Background image set", Toast.LENGTH_SHORT).show()
